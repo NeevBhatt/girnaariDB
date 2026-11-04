@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#b45309">
+    <meta name="description" content="Gir Naari - 100% Pure & Organic A2 Gir Cow Desi Ghee Digital Customer & Order Register">
+    <title>Gir Naari - Customer & Order Register</title>
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Supabase JS SDK (v2 via CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- SheetJS (XLSX parsing library for customer & order import) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+    <!-- ==============================================================================
+         HEADER
+         ============================================================================== -->
+    <header class="app-header">
+        <div class="header-inner">
+            <div class="brand-wrapper">
+                <span class="brand-logo-icon">🌿</span>
+                <div>
+                    <h1 class="brand-title">Gir Naari</h1>
+                    <p class="brand-subtitle">Pure A2 Gir Cow Desi Ghee &bull; Ahmedabad</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div id="userBadge"></div>
+                <button type="button" id="btnOpenSettings" class="btn-settings-icon" title="Supabase Database Settings">
+                    ⚙️
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Database Status Banner (shows if running in local storage fallback) -->
+    <div id="dbStatusBanner" class="db-status-banner" style="display: none;"></div>
+
+    <!-- ==============================================================================
+         MAIN APPLICATION VIEWS
+         ============================================================================== -->
+    <main class="app-container">
+
+        <!-- --------------------------------------------------------------------------
+             SECTION 1: DASHBOARD
+             -------------------------------------------------------------------------- -->
+        <section id="section-dashboard" class="app-section active">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Business Overview</h2>
+                    <p class="section-lead">Live register summary</p>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="dash-stats-grid">
+                <div class="dash-card card-primary clickable" onclick="App.navigateTo('customers')">
+                    <span class="card-label">👥 Customers</span>
+                    <span id="dashTotalCustomers" class="card-value">0</span>
+                </div>
+                <div class="dash-card">
+                    <span class="card-label">📦 Today's Orders</span>
+                    <span id="dashTodayOrders" class="card-value">0</span>
+                </div>
+                <div class="dash-card card-primary">
+                    <span class="card-label">💰 Today's Sales</span>
+                    <span id="dashTodaySales" class="card-value">₹0</span>
+                </div>
+                <div class="dash-card card-pending clickable" onclick="App.navigateTo('reports')">
+                    <span class="card-label">⚠️ Pending Balance</span>
+                    <span id="dashPendingPayments" class="card-value">₹0</span>
+                </div>
+            </div>
+
+            <!-- Big Prominent CTA to Add New Order -->
+            <div class="cta-order-banner" onclick="App.navigateTo('orders')">
+                <div class="cta-left">
+                    <h3>➕ Record New Ghee Order</h3>
+                    <p>Tap here to quickly add quantity, manual price & payment</p>
+                </div>
+                <button type="button" class="btn-cta-big">Add Order ➔</button>
+            </div>
+
+            <!-- 40-Day Reminders Notification Card -->
+            <div class="dash-card card-reminder clickable mb-2" onclick="App.navigateTo('reminders')">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span class="card-label">⏳ Follow-up Reminders (≥ 40 Days)</span>
+                        <div style="font-size: 14px; color: var(--text-muted); margin-top: 2px;">
+                            Customers due to re-order ghee grouped by Ahmedabad area
+                        </div>
+                    </div>
+                    <span id="dashDueReminders" class="card-value" style="font-size: 28px;">0</span>
+                </div>
+            </div>
+
+            <!-- Recent Orders Panel -->
+            <div class="dash-panel mt-3">
+                <div class="panel-header">
+                    <h3 class="panel-title">Recent Ghee Orders</h3>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="App.navigateTo('reports')">View All</button>
+                </div>
+                <div id="dashRecentOrdersList">
+                    <div class="loading-spinner"><div class="spinner"></div><p>Loading recent orders...</p></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- --------------------------------------------------------------------------
+             SECTION 2: ADD ORDER (Most Important Screen)
+             -------------------------------------------------------------------------- -->
+        <section id="section-orders" class="app-section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">New Ghee Order</h2>
+                    <p class="section-lead">Manual pricing &bull; Auto balance calculation</p>
+                </div>
+            </div>
+
+            <div class="dash-panel">
+                <form id="orderForm" autocomplete="off">
+
+                    <!-- Customer Search & Selection -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            Select Customer <span class="required">*</span>
+                            <span class="hint">(Search by name, phone or area)</span>
+                        </label>
+                        
+                        <!-- Selected Customer display badge -->
+                        <div id="selectedCustomerBadge" style="display: none;"></div>
+
+                        <!-- Customer Picker -->
+                        <div class="customer-picker-container">
+                            <input 
+                                type="text" 
+                                id="orderCustomerSearch" 
+                                class="form-control" 
+                                placeholder="🔍 Type customer name or phone number..."
+                            >
+                            <div id="orderCustomerDropdown" class="customer-dropdown"></div>
+                        </div>
+                    </div>
+
+                    <!-- Order Date -->
+                    <div class="form-group">
+                        <label class="form-label" for="orderDate">Order Date <span class="required">*</span></label>
+                        <input type="date" id="orderDate" class="form-control" required>
+                    </div>
+
+                    <!-- Quantity & Unit -->
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 2;">
+                            <label class="form-label" for="orderQuantity">Quantity <span class="required">*</span></label>
+                            <input 
+                                type="number" 
+                                id="orderQuantity" 
+                                class="form-control" 
+                                placeholder="e.g. 1, 2, 5" 
+                                step="any" 
+                                min="0.1" 
+                                required
+                            >
+                        </div>
+                        <div class="form-group" style="flex: 1.5;">
+                            <label class="form-label" for="orderUnit">Unit <span class="required">*</span></label>
+                            <select id="orderUnit" class="form-select">
+                                <option value="litre" selected>litre</option>
+                                <option value="kg">kg</option>
+                                <option value="gram">gram</option>
+                                <option value="ml">ml</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- MANUAL PRICING (Never Hardcoded!) -->
+                    <div class="form-group">
+                        <label class="form-label" for="orderPrice">
+                            Manual Price (₹) per Unit <span class="required">*</span>
+                            <span class="hint">(e.g. ₹1,200/L or wholesale rate)</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="orderPrice" 
+                            class="form-control" 
+                            placeholder="Enter agreed selling price (₹)" 
+                            step="any" 
+                            min="0" 
+                            required
+                        >
+                    </div>
+
+                    <!-- Total Amount (Calculated Automatically) -->
+                    <div class="form-group">
+                        <label class="form-label" for="orderTotal">
+                            Total Order Amount (₹)
+                            <span class="hint">(Quantity × Price)</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="orderTotal" 
+                            class="form-control" 
+                            readonly 
+                            style="background-color: var(--bg-subtle); font-weight: 800; font-size: 18px; color: var(--primary-dark);"
+                        >
+                    </div>
+
+                    <!-- Amount Paid -->
+                    <div class="form-group">
+                        <label class="form-label" for="orderAmountPaid">
+                            Amount Paid (₹)
+                            <span class="hint">(Supports full, partial, or unpaid)</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="orderAmountPaid" 
+                            class="form-control" 
+                            placeholder="Amount received" 
+                            step="any" 
+                            min="0"
+                        >
+                        <!-- Quick Touch Pay Buttons -->
+                        <div class="quick-pay-row">
+                            <button type="button" class="btn-quick-pay" data-action="full">✓ Full Paid</button>
+                            <button type="button" class="btn-quick-pay" data-action="half">½ Half Paid</button>
+                            <button type="button" class="btn-quick-pay" data-action="zero">✕ Unpaid (₹0)</button>
+                        </div>
+                    </div>
+
+                    <!-- Real-Time Pending Balance Calculator -->
+                    <div id="orderBalanceDisplay"></div>
+
+                    <!-- Payment Method -->
+                    <div class="form-group">
+                        <label class="form-label" for="orderPaymentMethod">Payment Method <span class="required">*</span></label>
+                        <select id="orderPaymentMethod" class="form-select">
+                            <option value="Cash" selected>Cash</option>
+                            <option value="UPI">UPI (Google Pay / PhonePe / Paytm)</option>
+                            <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Order Notes -->
+                    <div class="form-group">
+                        <label class="form-label" for="orderNotes">Notes / Delivery Details (Optional)</label>
+                        <textarea id="orderNotes" class="form-control" placeholder="e.g. Glass jar packaging, delivered at home..."></textarea>
+                    </div>
+
+                    <!-- Submit Order Button -->
+                    <button type="submit" id="btnSubmitOrder" class="btn btn-primary btn-block" style="font-size: 18px; height: 52px;">
+                        <span>💾 Save Ghee Order</span>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- --------------------------------------------------------------------------
+             SECTION 3: CUSTOMERS
+             -------------------------------------------------------------------------- -->
+        <section id="section-customers" class="app-section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Customer Register</h2>
+                    <p class="section-lead">Total: <span id="customerTotalCountBadge">0</span></p>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="CustomersModule.openAddModal()">
+                    ➕ Add Customer
+                </button>
+            </div>
+
+            <!-- Search & Area Filter Bar -->
+            <div class="search-filter-bar">
+                <div class="search-input-wrap">
+                    <input 
+                        type="text" 
+                        id="custSearchInput" 
+                        class="form-control" 
+                        placeholder="🔍 Search name, phone or area..."
+                    >
+                </div>
+                <div class="filter-select-wrap">
+                    <select id="custAreaFilter" class="form-select">
+                        <option value="">All Areas (Ahmedabad)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Customer Cards List -->
+            <div id="customerListContainer" class="customer-cards-list">
+                <div class="loading-spinner"><div class="spinner"></div><p>Loading customers...</p></div>
+            </div>
+        </section>
+
+        <!-- --------------------------------------------------------------------------
+             SECTION 4: 40-DAY REMINDERS
+             -------------------------------------------------------------------------- -->
+        <section id="section-reminders" class="app-section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Customer Reminders</h2>
+                    <p class="section-lead" id="reminderCountHeader">40-day follow-up list</p>
+                </div>
+            </div>
+
+            <!-- Reminder Filter Tabs -->
+            <div class="reminder-filters-toolbar">
+                <button type="button" class="reminder-filter-tab active" data-filter="all">All Overdue</button>
+                <button type="button" class="reminder-filter-tab" data-filter="uncontacted">Needs Contact</button>
+                <button type="button" class="reminder-filter-tab" data-filter="contacted">Already Contacted</button>
+            </div>
+
+            <!-- Grouped by Locality / Area -->
+            <div id="remindersListContainer">
+                <div class="loading-spinner"><div class="spinner"></div><p>Calculating 40-day customer re-order intervals...</p></div>
+            </div>
+        </section>
+
+        <!-- --------------------------------------------------------------------------
+             SECTION 5: REPORTS & EXCEL IMPORT
+             -------------------------------------------------------------------------- -->
+        <section id="section-reports" class="app-section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Sales & Reports</h2>
+                    <p class="section-lead">Collections, balances & Excel import</p>
+                </div>
+            </div>
+
+            <!-- Date Filter Toolbar -->
+            <div class="dash-panel mb-2">
+                <div class="report-date-toolbar">
+                    <div style="flex: 1; min-width: 130px;">
+                        <label class="form-label">Period</label>
+                        <select id="reportDatePreset" class="form-select">
+                            <option value="this_month" selected>This Month</option>
+                            <option value="today">Today</option>
+                            <option value="last_30">Last 30 Days</option>
+                            <option value="all">All Time</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1; min-width: 120px;">
+                        <label class="form-label">From</label>
+                        <input type="date" id="reportStartDate" class="form-control">
+                    </div>
+                    <div style="flex: 1; min-width: 120px;">
+                        <label class="form-label">To</label>
+                        <input type="date" id="reportEndDate" class="form-control">
+                    </div>
+                    <div>
+                        <button type="button" id="btnApplyReportFilter" class="btn btn-primary btn-sm">Filter</button>
+                    </div>
+                </div>
+
+                <!-- Report Summary Grid -->
+                <div class="dash-stats-grid mt-2">
+                    <div class="dash-card card-primary">
+                        <span class="card-label">💰 Total Sales</span>
+                        <span id="repTotalSales" class="card-value">₹0</span>
+                    </div>
+                    <div class="dash-card">
+                        <span class="card-label">📦 Quantity Sold</span>
+                        <span id="repTotalQuantity" class="card-value">0 L</span>
+                    </div>
+                    <div class="dash-card">
+                        <span class="card-label">💵 Cash Collected</span>
+                        <span id="repCashCollected" class="card-value">₹0</span>
+                    </div>
+                    <div class="dash-card">
+                        <span class="card-label">📱 Online / UPI</span>
+                        <span id="repOnlineCollected" class="card-value">₹0</span>
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 13px; color: var(--text-muted);">
+                    <span>Orders in range: <strong id="repOrdersCount">0</strong></span>
+                    <span>Total Unpaid in range: <strong id="repTotalPending" class="text-danger">₹0</strong></span>
+                </div>
+            </div>
+
+            <!-- Orders Table & Export -->
+            <div class="dash-panel mb-2">
+                <div class="panel-header">
+                    <h3 class="panel-title">Date-wise Orders</h3>
+                    <button type="button" id="btnExportOrdersCsv" class="btn btn-sm btn-outline">
+                        📥 Export CSV
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Qty</th>
+                                <th>Rate</th>
+                                <th>Total</th>
+                                <th>Paid</th>
+                                <th>Pending</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportOrdersTableBody">
+                            <tr><td colspan="7" class="text-center py-3">Loading orders...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pending Payments Register -->
+            <div class="dash-panel mb-2">
+                <div class="panel-header">
+                    <h3 class="panel-title">⚠️ Pending Payments Register</h3>
+                    <button type="button" id="btnExportPendingCsv" class="btn btn-sm btn-outline">
+                        📥 Export Balances
+                    </button>
+                </div>
+                <div id="reportPendingPaymentsContainer">
+                    <div class="loading-spinner"><div class="spinner"></div><p>Calculating pending balances...</p></div>
+                </div>
+            </div>
+
+            <!-- Area-wise Customer Distribution -->
+            <div class="dash-panel mb-2">
+                <div class="panel-header">
+                    <h3 class="panel-title">📍 Ahmedabad Area-wise Customers</h3>
+                </div>
+                <div id="reportAreaSummaryContainer"></div>
+            </div>
+
+            <!-- Excel Import Facility -->
+            <div class="dash-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">📄 Excel Import (.xlsx / .xls)</h3>
+                </div>
+                <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 14px;">
+                    Upload your existing Gir Naari Excel workbook. Detects duplicate customers by phone number and imports historical orders.
+                </p>
+
+                <div id="excelDropZone" class="excel-drop-zone">
+                    <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv">
+                    <div id="excelDropZoneText">
+                        <span style="font-size: 32px; display: block; margin-bottom: 6px;">📥</span>
+                        <strong>Choose Excel File</strong> or drag and drop here (.xlsx, .xls, .csv)
+                    </div>
+                </div>
+
+                <!-- Column Mapping Section (dynamically shown after file selection) -->
+                <div id="excelMappingSection" style="display: none;" class="mt-3">
+                    <h4 style="font-size: 15px; margin-bottom: 10px; color: var(--primary-dark);">
+                        1. Inspect & Map Columns:
+                    </h4>
+                    <div id="excelColumnMappingGrid" class="mapping-grid"></div>
+                </div>
+
+                <!-- Preview Table & Stats -->
+                <div id="excelPreviewSection" style="display: none;" class="mt-3">
+                    <h4 style="font-size: 15px; margin-bottom: 10px; color: var(--primary-dark);">
+                        2. Preview & Validation (First 5 Rows):
+                    </h4>
+                    <div id="excelPreviewStats" style="margin-bottom: 10px;"></div>
+                    <div id="excelPreviewTableContainer" class="table-responsive"></div>
+
+                    <div id="excelImportProgressContainer" style="display: none;">
+                        <div class="progress-bar-container">
+                            <div id="excelImportProgressBar" class="progress-bar"></div>
+                        </div>
+                        <div id="excelImportProgressText" style="font-size: 13px; color: var(--text-muted); text-align: center;"></div>
+                    </div>
+
+                    <button type="button" id="btnStartExcelImport" class="btn btn-primary btn-block mt-2">
+                        🚀 Start Importing Customers & Orders
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==============================================================================
+         BOTTOM NAVIGATION BAR (Mobile-First)
+         ============================================================================== -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-inner">
+            <button type="button" class="nav-item active" data-tab="dashboard">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="customers">
+                <span class="nav-icon">👥</span>
+                <span>Customers</span>
+            </button>
+            <button type="button" class="nav-item nav-item-highlight" data-tab="orders">
+                <div class="nav-icon-wrap">
+                    <span class="nav-icon">➕</span>
+                </div>
+                <span>Add Order</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="reminders">
+                <span class="nav-icon">⏳</span>
+                <span>Reminders</span>
+                <span id="navReminderBadge" class="nav-badge">0</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="reports">
+                <span class="nav-icon">📈</span>
+                <span>Reports</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ==============================================================================
+         MODALS
+         ============================================================================== -->
+
+    <!-- 1. Customer Modal (Add / Edit) -->
+    <div id="customerModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="customerModalTitle" class="modal-title">Add New Customer</h3>
+                <button type="button" class="modal-close" onclick="CustomersModule.closeModal()">&times;</button>
+            </div>
+            <form id="customerForm" autocomplete="off">
+                <div class="modal-body">
+                    <input type="hidden" id="customerId">
+
+                    <div class="form-group">
+                        <label class="form-label" for="custName">Customer Full Name <span class="required">*</span></label>
+                        <input type="text" id="custName" class="form-control" placeholder="e.g. Rajesh Patel" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="custPhone">Mobile Number (WhatsApp) <span class="required">*</span></label>
+                        <input type="tel" id="custPhone" class="form-control" placeholder="10-digit mobile number" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="custArea">
+                            Area / Locality in Ahmedabad <span class="required">*</span>
+                            <span class="hint">(Used for 40-day reminder grouping)</span>
+                        </label>
+                        <input type="text" id="custArea" class="form-control" placeholder="e.g. Gota, Chandkheda, Bodakdev" list="suggestedAreasList" required>
+                        <datalist id="suggestedAreasList"></datalist>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="custAddress">Full Address (Optional)</label>
+                        <textarea id="custAddress" class="form-control" placeholder="Flat/House number, society, landmark..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="custType">Customer Category</label>
+                        <select id="custType" class="form-select">
+                            <option value="Regular" selected>Regular</option>
+                            <option value="Small Shop">Small Shop</option>
+                            <option value="Wholesaler">Wholesaler</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="custNotes">Notes (Optional)</label>
+                        <input type="text" id="custNotes" class="form-control" placeholder="Packaging preference, delivery instructions...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-modal-cancel" onclick="CustomersModule.closeModal()">Cancel</button>
+                    <button type="submit" id="btnSaveCustomer" class="btn btn-primary">Save Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. Customer Purchase History Modal -->
+    <div id="historyModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Customer History</h3>
+                <button type="button" class="modal-close" onclick="CustomersModule.closeHistoryModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="historyModalContent"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="CustomersModule.closeHistoryModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Family Login & Profile Switcher Modal -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Gir Naari Family Login</h3>
+            </div>
+            <form id="familyLoginForm">
+                <div class="modal-body">
+                    <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 14px;">
+                        Select who is using the app and enter the family PIN.
+                    </p>
+
+                    <div class="form-group">
+                        <label class="form-label">Who is using the register?</label>
+                        <select id="familyMemberSelect" class="form-select">
+                            <option value="father" selected>Papa (Father)</option>
+                            <option value="mother">Mummy (Mother)</option>
+                            <option value="neev">Neev</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="familyPinInput">Family PIN</label>
+                        <input 
+                            type="password" 
+                            id="familyPinInput" 
+                            class="form-control" 
+                            placeholder="Enter 4-digit PIN" 
+                            inputmode="numeric" 
+                            pattern="[0-9]*" 
+                            maxlength="6" 
+                            required
+                        >
+                        <span class="hint" style="display:block; margin-top:4px;">Default PIN: <strong>1234</strong></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary btn-block">Unlock Register ➔</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. Supabase Database & Settings Modal -->
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">⚙️ Register Database Settings</h3>
+                <button type="button" class="modal-close">&times;</button>
+            </div>
+            <form id="settingsForm">
+                <div class="modal-body">
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+                        Connect your live Supabase PostgreSQL database so that you, Father, and Mother can access and record orders simultaneously from all three phones.
+                    </p>
+
+                    <div class="form-group">
+                        <label class="form-label" for="settingSupabaseUrl">Supabase Project URL</label>
+                        <input 
+                            type="url" 
+                            id="settingSupabaseUrl" 
+                            class="form-control" 
+                            placeholder="https://xyzcompany.supabase.co"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="settingSupabaseKey">Supabase Publishable / Anon Key</label>
+                        <input 
+                            type="password" 
+                            id="settingSupabaseKey" 
+                            class="form-control" 
+                            placeholder="eyJh..."
+                        >
+                        <span class="hint" style="display: block; margin-top: 4px;">Never use service-role keys in frontend code.</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="settingFamilyPin">Family PIN (for Neev, Papa & Mummy)</label>
+                        <input 
+                            type="text" 
+                            id="settingFamilyPin" 
+                            class="form-control" 
+                            placeholder="1234" 
+                            maxlength="6"
+                        >
+                    </div>
+
+                    <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
+                        <button type="button" id="btnTestSupabase" class="btn btn-sm btn-secondary">
+                            ⚡ Test Supabase Connection
+                        </button>
+                        <span id="supabaseTestResult" style="font-size: 13px;"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-modal-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Application JavaScript Modules -->
+    <script src="js/config.js"></script>
+    <script src="js/supabaseClient.js"></script>
+    <script src="js/db.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/orders.js"></script>
+    <script src="js/customers.js"></script>
+    <script src="js/reminders.js"></script>
+    <script src="js/reports.js"></script>
+    <script src="js/import.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
+
