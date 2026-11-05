@@ -1,0 +1,18 @@
+{
+  "name": "girnaari-db",
+  "version": "1.0.0",
+  "description": "Gir Naari - 100% Pure & Organic A2 Gir Cow Desi Ghee Digital Customer & Order Register",
+  "main": "serve.js",
+  "scripts": {
+    "start": "node serve.js",
+    "test": "node test_run.js"
+  },
+  "keywords": [
+    "gir-naari",
+    "desi-ghee",
+    "order-register",
+    "supabase"
+  ],
+  "author": "Neev Bhatt",
+  "license": "ISC"
+}
