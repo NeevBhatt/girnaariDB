@@ -149,3 +149,4 @@ Tap the **📈 Reports** tab at the bottom:
 - Everything is backed up safely in your Supabase cloud database — no risk of losing physical paper notes or torn diary pages.
 
 🌿 **Gir Naari – 100% Pure & Organic A2 Gir Cow Desi Ghee, Ahmedabad.**
+

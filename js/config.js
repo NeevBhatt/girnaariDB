@@ -2,13 +2,36 @@
  * GIR NAARI - CONFIGURATION
  * 
  * Default Supabase credentials for Gir Naari live database.
- * Stored localStorage values (if any) take precedence, or falls back to these pre-configured defaults.
+ * Stored localStorage values (if any) take precedence, with automatic URL origin normalization.
  */
+
+// Normalizes URL so only the origin (https://xyz.supabase.co) is ever used
+function normalizeSupabaseUrl(inputUrl) {
+    const fallback = 'https://xhfrdursmcibnnqrnwwg.supabase.co';
+    if (!inputUrl) return fallback;
+    try {
+        let u = inputUrl.trim();
+        if (!u.startsWith('http://') && !u.startsWith('https://')) {
+            u = 'https://' + u;
+        }
+        const parsed = new URL(u);
+        return parsed.origin;
+    } catch (e) {
+        return fallback;
+    }
+}
+
+// Clean and persist clean URL
+const rawStoredUrl = localStorage.getItem('girnaari_supabase_url');
+const cleanUrl = normalizeSupabaseUrl(rawStoredUrl || 'https://xhfrdursmcibnnqrnwwg.supabase.co');
+if (rawStoredUrl !== cleanUrl) {
+    localStorage.setItem('girnaari_supabase_url', cleanUrl);
+}
 
 const CONFIG = {
     // Supabase Settings (Pre-configured for Gir Naari family register)
     supabase: {
-        url: localStorage.getItem('girnaari_supabase_url') || 'https://xhfrdursmcibnnqrnwwg.supabase.co',
+        url: cleanUrl,
         anonKey: localStorage.getItem('girnaari_supabase_anon_key') || 'sb_publishable_TagAA0deGkls2XMHYoWb6A_GYOgNpqq',
     },
 

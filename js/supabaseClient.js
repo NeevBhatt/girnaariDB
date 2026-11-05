@@ -7,13 +7,18 @@
     let client = null;
     let isMockMode = false;
 
-    // Clean URL: remove any /rest/v1/ or trailing slash if user pasted REST endpoint
+    // Clean URL: strictly extract origin (https://xyz.supabase.co) ignoring any paths or /rest/v1
     function cleanSupabaseUrl(url) {
-        if (!url) return '';
-        let cleaned = url.trim();
-        cleaned = cleaned.replace(/\/rest\/v1\/?$/i, '');
-        cleaned = cleaned.replace(/\/+$/, '');
-        return cleaned;
+        if (!url) return 'https://xhfrdursmcibnnqrnwwg.supabase.co';
+        try {
+            let u = url.trim();
+            if (!u.startsWith('http://') && !u.startsWith('https://')) {
+                u = 'https://' + u;
+            }
+            return new URL(u).origin;
+        } catch (e) {
+            return 'https://xhfrdursmcibnnqrnwwg.supabase.co';
+        }
     }
 
     // Check if Supabase keys are configured
@@ -22,8 +27,11 @@
         const key = window.CONFIG.supabase.anonKey ? window.CONFIG.supabase.anonKey.trim() : '';
         const url = cleanSupabaseUrl(rawUrl);
 
-        // Keep CONFIG in sync with cleaned URL
+        // Keep CONFIG and localStorage in sync with cleaned URL
         window.CONFIG.supabase.url = url;
+        if (localStorage.getItem('girnaari_supabase_url') !== url) {
+            localStorage.setItem('girnaari_supabase_url', url);
+        }
 
         if (url && key && window.supabase && typeof window.supabase.createClient === 'function') {
             try {
