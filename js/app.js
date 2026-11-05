@@ -159,8 +159,53 @@ window.App = {
                 </div>
             `;
             banner.style.display = 'block';
+            banner.className = 'db-status-banner';
         } else {
-            banner.style.display = 'none';
+            // Live Supabase is connected! Check if this phone has unsynced offline orders
+            const unsyncedCount = window.DB.hasUnsyncedLocalOrders();
+            if (unsyncedCount > 0) {
+                banner.innerHTML = `
+                    <div class="db-banner-content db-sync-highlight">
+                        <span>📲 <strong>${unsyncedCount} offline order(s)</strong> recorded on this phone before Supabase was connected!</span>
+                        <button type="button" class="btn btn-sm btn-whatsapp" onclick="App.syncOfflineOrders()">⚡ Sync ${unsyncedCount} Order(s) to Supabase</button>
+                    </div>
+                `;
+                banner.style.display = 'block';
+                banner.className = 'db-status-banner banner-sync';
+            } else {
+                banner.style.display = 'none';
+            }
+        }
+    },
+
+    async syncOfflineOrders() {
+        if (!confirm('Sync locally recorded orders on this phone to the live Supabase database? Once uploaded, Neev, Papa, and Mummy will all see them.')) {
+            return;
+        }
+
+        this.showToast('Uploading offline orders to Supabase...', 'info');
+
+        try {
+            const res = await window.DB.syncLocalDataToSupabase();
+            if (res.success && res.count > 0) {
+                this.showToast(`✓ ${res.count} order(s) synced to Supabase!`, 'success');
+                alert(`✅ Synchronization Complete!\n\n${res.count} order(s) and ${res.customersCount} customer(s) are now uploaded to Supabase.\nAll family devices can now view these orders!`);
+            } else {
+                this.showToast('No new offline orders needed syncing.', 'info');
+            }
+
+            this.checkDatabaseStatusBanner();
+
+            // Refresh all views
+            if (window.DashboardModule) await window.DashboardModule.loadStats();
+            if (window.CustomersModule) await window.CustomersModule.loadCustomers();
+            if (window.RemindersModule) await window.RemindersModule.loadReminders();
+            if (window.ReportsModule) await window.ReportsModule.loadReports();
+
+        } catch (err) {
+            console.error('Sync failed:', err);
+            this.showToast('Sync failed: ' + err.message, 'error');
+            alert('Failed to sync offline orders: ' + err.message);
         }
     },
 

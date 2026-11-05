@@ -1,16 +1,29 @@
 /**
  * GIR NAARI - SUPABASE CLIENT & DATA ACCESS LAYER
- * Lightweight wrapper for Supabase JS SDK with graceful local storage fallback
+ * Lightweight wrapper for Supabase JS SDK with automatic URL cleanup and local storage fallback
  */
 
 (function () {
     let client = null;
     let isMockMode = false;
 
+    // Clean URL: remove any /rest/v1/ or trailing slash if user pasted REST endpoint
+    function cleanSupabaseUrl(url) {
+        if (!url) return '';
+        let cleaned = url.trim();
+        cleaned = cleaned.replace(/\/rest\/v1\/?$/i, '');
+        cleaned = cleaned.replace(/\/+$/, '');
+        return cleaned;
+    }
+
     // Check if Supabase keys are configured
     function initSupabase() {
-        const url = window.CONFIG.supabase.url ? window.CONFIG.supabase.url.trim() : '';
+        let rawUrl = window.CONFIG.supabase.url ? window.CONFIG.supabase.url.trim() : '';
         const key = window.CONFIG.supabase.anonKey ? window.CONFIG.supabase.anonKey.trim() : '';
+        const url = cleanSupabaseUrl(rawUrl);
+
+        // Keep CONFIG in sync with cleaned URL
+        window.CONFIG.supabase.url = url;
 
         if (url && key && window.supabase && typeof window.supabase.createClient === 'function') {
             try {
@@ -21,7 +34,7 @@
                     }
                 });
                 isMockMode = false;
-                console.log('✅ Gir Naari: Connected to Supabase Live Database');
+                console.log('✅ Gir Naari: Connected to Supabase Live Database:', url);
             } catch (err) {
                 console.warn('⚠️ Gir Naari: Failed to init Supabase client, falling back to local database', err);
                 isMockMode = true;
@@ -31,13 +44,13 @@
             isMockMode = true;
         }
 
-        // Initialize local mock tables if empty
+        // Initialize local mock tables if empty (only for offline testing)
         if (isMockMode) {
             initLocalStorageData();
         }
     }
 
-    // Default seed data for initial testing if no Supabase configured yet
+    // Default seed data for offline preview if database not connected
     function initLocalStorageData() {
         if (!localStorage.getItem('gn_customers')) {
             const initialCustomers = [
@@ -105,8 +118,8 @@
             const initialOrders = [
                 {
                     id: 'o111-1111-1111',
-                    customer_id: 'c1b827e1-8890-410a-9d22-111111111111', // Rajesh Patel
-                    order_date: d45DaysAgo, // 45 days ago -> Due for 40-day reminder!
+                    customer_id: 'c1b827e1-8890-410a-9d22-111111111111',
+                    order_date: d45DaysAgo,
                     quantity: 2,
                     unit: 'litre',
                     price: 1200,
@@ -118,8 +131,8 @@
                 },
                 {
                     id: 'o222-2222-2222',
-                    customer_id: 'c2b827e1-8890-410a-9d22-222222222222', // Meenaben Shah
-                    order_date: d52DaysAgo, // 52 days ago -> Due for 40-day reminder!
+                    customer_id: 'c2b827e1-8890-410a-9d22-222222222222',
+                    order_date: d52DaysAgo,
                     quantity: 1,
                     unit: 'litre',
                     price: 1250,
@@ -131,21 +144,21 @@
                 },
                 {
                     id: 'o333-3333-3333',
-                    customer_id: 'c3b827e1-8890-410a-9d22-333333333333', // Jayeshbhai Soni
-                    order_date: d65DaysAgo, // 65 days ago -> Due for 40-day reminder!
+                    customer_id: 'c3b827e1-8890-410a-9d22-333333333333',
+                    order_date: d65DaysAgo,
                     quantity: 5,
                     unit: 'litre',
                     price: 1100,
                     total: 5500,
-                    amount_paid: 3500, // Pending 2000!
+                    amount_paid: 3500,
                     payment_method: 'Bank Transfer',
                     notes: '₹2,000 balance pending for next batch',
                     created_at: new Date(Date.now() - 65 * 24 * 60 * 60 * 1000).toISOString()
                 },
                 {
                     id: 'o444-4444-4444',
-                    customer_id: 'c4b827e1-8890-410a-9d22-444444444444', // Kavitaben Joshi
-                    order_date: d15DaysAgo, // 15 days ago -> Not due for reminder
+                    customer_id: 'c4b827e1-8890-410a-9d22-444444444444',
+                    order_date: d15DaysAgo,
                     quantity: 1,
                     unit: 'litre',
                     price: 1200,
@@ -157,13 +170,13 @@
                 },
                 {
                     id: 'o555-5555-5555',
-                    customer_id: 'c5b827e1-8890-410a-9d22-555555555555', // Harshad Vora
-                    order_date: todayStr, // Today's order!
+                    customer_id: 'c5b827e1-8890-410a-9d22-555555555555',
+                    order_date: todayStr,
                     quantity: 2,
                     unit: 'litre',
                     price: 1200,
                     total: 2400,
-                    amount_paid: 1400, // 1000 pending
+                    amount_paid: 1400,
                     payment_method: 'Cash',
                     notes: 'Delivered in morning, 1000 pending',
                     created_at: new Date().toISOString()
@@ -182,6 +195,7 @@
         init: initSupabase,
         isMock: () => isMockMode,
         getClient: () => client,
+        cleanUrl: cleanSupabaseUrl,
 
         // Test Supabase connection
         async testConnection() {
@@ -196,10 +210,11 @@
         },
 
         // Update credentials dynamically from UI Settings
-        updateCredentials(url, anonKey) {
-            window.CONFIG.supabase.url = url ? url.trim() : '';
+        updateCredentials(rawUrl, anonKey) {
+            const cleanedUrl = cleanSupabaseUrl(rawUrl);
+            window.CONFIG.supabase.url = cleanedUrl;
             window.CONFIG.supabase.anonKey = anonKey ? anonKey.trim() : '';
-            localStorage.setItem('girnaari_supabase_url', window.CONFIG.supabase.url);
+            localStorage.setItem('girnaari_supabase_url', cleanedUrl);
             localStorage.setItem('girnaari_supabase_anon_key', window.CONFIG.supabase.anonKey);
             initSupabase();
         }
@@ -208,4 +223,3 @@
     // Auto initialize on load
     initSupabase();
 })();
-

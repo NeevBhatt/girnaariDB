@@ -1,24 +1,24 @@
 /**
  * GIR NAARI - CONFIGURATION
  * 
- * You can provide your Supabase credentials here directly,
- * or configure them within the app's Settings modal (stored securely in browser localStorage).
+ * Default Supabase credentials for Gir Naari live database.
+ * Stored localStorage values (if any) take precedence, or falls back to these pre-configured defaults.
  */
 
 const CONFIG = {
-    // Supabase Settings (Replace with your actual Supabase URL & Anon Key)
+    // Supabase Settings (Pre-configured for Gir Naari family register)
     supabase: {
-        url: localStorage.getItem('girnaari_supabase_url') || '',
-        anonKey: localStorage.getItem('girnaari_supabase_anon_key') || '',
+        url: localStorage.getItem('girnaari_supabase_url') || 'https://xhfrdursmcibnnqrnwwg.supabase.co',
+        anonKey: localStorage.getItem('girnaari_supabase_anon_key') || 'sb_publishable_TagAA0deGkls2XMHYoWb6A_GYOgNpqq',
     },
 
     // Family Member Access
     family: {
         pin: localStorage.getItem('girnaari_family_pin') || '1234', // Simple 4-digit PIN for the family
         members: [
-            { id: 'neev', name: 'Neev', role: 'Full Access' },
             { id: 'father', name: 'Papa', role: 'Full Access' },
-            { id: 'mother', name: 'Mummy', role: 'Full Access' }
+            { id: 'mother', name: 'Mummy', role: 'Full Access' },
+            { id: 'neev', name: 'Neev', role: 'Full Access' }
         ]
     },
 
@@ -67,4 +67,3 @@ const CONFIG = {
 
 // Export to window
 window.CONFIG = CONFIG;
-

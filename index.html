@@ -677,11 +677,22 @@
                         >
                     </div>
 
-                    <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
                         <button type="button" id="btnTestSupabase" class="btn btn-sm btn-secondary">
                             ⚡ Test Supabase Connection
                         </button>
                         <span id="supabaseTestResult" style="font-size: 13px;"></span>
+                    </div>
+
+                    <!-- Sync Offline Orders Button -->
+                    <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);">
+                        <label class="form-label">Phone Offline Data Sync</label>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+                            If orders were recorded on this phone before Supabase was connected, tap below to upload them to the live cloud database.
+                        </p>
+                        <button type="button" class="btn btn-sm btn-whatsapp btn-block" onclick="App.syncOfflineOrders()">
+                            📲 Sync Phone's Offline Orders to Supabase
+                        </button>
                     </div>
                 </div>
                 <div class="modal-footer">

@@ -472,6 +472,163 @@ window.DB = {
             dueRemindersCount: reminderData.totalDue,
             recentOrders
         };
+    },
+
+    // --------------------------------------------------------------------------
+    // OFFLINE-TO-SUPABASE SYNC
+    // Detects and uploads any orders added locally before connecting Supabase
+    // --------------------------------------------------------------------------
+    hasUnsyncedLocalOrders() {
+        try {
+            const localOrders = JSON.parse(localStorage.getItem('gn_orders') || '[]');
+            // Orders created while in mock/offline mode have IDs starting with 'ord_'
+            const unsynced = localOrders.filter(o => 
+                (o.id && o.id.startsWith('ord_')) && !o._synced_to_supabase
+            );
+            return unsynced.length;
+        } catch (e) {
+            return 0;
+        }
+    },
+
+    getLocalOrdersForSync() {
+        try {
+            const localOrders = JSON.parse(localStorage.getItem('gn_orders') || '[]');
+            const localCustomers = JSON.parse(localStorage.getItem('gn_customers') || '[]');
+            const custMap = new Map(localCustomers.map(c => [c.id, c]));
+
+            const unsynced = localOrders.filter(o => 
+                (o.id && o.id.startsWith('ord_')) && !o._synced_to_supabase
+            );
+
+            return unsynced.map(o => ({
+                ...o,
+                customer: custMap.get(o.customer_id) || { name: 'Customer', phone: '', area: 'Ahmedabad' }
+            }));
+        } catch (e) {
+            return [];
+        }
+    },
+
+    async syncLocalDataToSupabase() {
+        const client = window.GirNaariDB.getClient();
+        if (!client || window.GirNaariDB.isMock()) {
+            throw new Error('Supabase live database is not connected. Please check Settings.');
+        }
+
+        const localOrders = JSON.parse(localStorage.getItem('gn_orders') || '[]');
+        const localCustomers = JSON.parse(localStorage.getItem('gn_customers') || '[]');
+        const custMap = new Map(localCustomers.map(c => [c.id, c]));
+
+        // Identify orders to sync: any user-created orders starting with 'ord_', or any unsynced
+        let toSync = localOrders.filter(o => (o.id && o.id.startsWith('ord_')) && !o._synced_to_supabase);
+        
+        // If no 'ord_' found but user has local orders and Supabase is empty, allow syncing all local orders
+        if (toSync.length === 0) {
+            const { count } = await client.from('orders').select('*', { count: 'exact', head: true });
+            if (count === 0 && localOrders.length > 0) {
+                toSync = localOrders.filter(o => !o._synced_to_supabase);
+            }
+        }
+
+        if (toSync.length === 0) {
+            return { success: true, count: 0, message: 'No offline orders to sync.' };
+        }
+
+        let syncedOrdersCount = 0;
+        let syncedCustCount = 0;
+
+        // Fetch existing Supabase customers to avoid duplicates
+        const { data: supaCusts, error: custErr } = await client.from('customers').select('*');
+        if (custErr) throw custErr;
+
+        const supaCustMapByPhone = new Map();
+        const supaCustMapByName = new Map();
+        (supaCusts || []).forEach(c => {
+            if (c.phone) supaCustMapByPhone.set(c.phone.replace(/[^0-9]/g, '').slice(-10), c);
+            if (c.name) supaCustMapByName.set(c.name.trim().toLowerCase(), c);
+        });
+
+        for (const order of toSync) {
+            const localCust = custMap.get(order.customer_id);
+            let targetSupaCustId = null;
+
+            if (localCust) {
+                const cleanPhone = (localCust.phone || '').replace(/[^0-9]/g, '').slice(-10);
+                const normName = (localCust.name || '').trim().toLowerCase();
+
+                let existingSupaCust = supaCustMapByPhone.get(cleanPhone) || supaCustMapByName.get(normName);
+
+                if (existingSupaCust) {
+                    targetSupaCustId = existingSupaCust.id;
+                } else {
+                    // Create customer in Supabase
+                    const newCustPayload = {
+                        name: localCust.name ? localCust.name.trim() : 'Customer',
+                        phone: cleanPhone || '9825000000',
+                        area: localCust.area ? localCust.area.trim() : 'Ahmedabad',
+                        address: localCust.address ? localCust.address.trim() : '',
+                        customer_type: localCust.customer_type || 'Regular',
+                        notes: localCust.notes || ''
+                    };
+
+                    const { data: insertedCust, error: insErr } = await client
+                        .from('customers')
+                        .insert([newCustPayload])
+                        .select()
+                        .single();
+
+                    if (insErr) throw insErr;
+                    targetSupaCustId = insertedCust.id;
+                    syncedCustCount++;
+                    supaCustMapByPhone.set(cleanPhone, insertedCust);
+                    supaCustMapByName.set(normName, insertedCust);
+                }
+            }
+
+            if (!targetSupaCustId) {
+                // If customer not found, create a generic one
+                const { data: genericCust } = await client
+                    .from('customers')
+                    .insert([{ name: 'Customer', phone: '9825000000', area: 'Ahmedabad' }])
+                    .select()
+                    .single();
+                targetSupaCustId = genericCust.id;
+            }
+
+            // Insert order into Supabase
+            const orderPayload = {
+                customer_id: targetSupaCustId,
+                order_date: order.order_date || new Date().toISOString().split('T')[0],
+                quantity: parseFloat(order.quantity) || 1,
+                unit: order.unit || 'litre',
+                price: parseFloat(order.price) || 0,
+                total: parseFloat(order.total) || (parseFloat(order.quantity) * parseFloat(order.price)),
+                amount_paid: parseFloat(order.amount_paid) || 0,
+                payment_method: order.payment_method || 'Cash',
+                notes: order.notes || ''
+            };
+
+            const { error: ordErr } = await client
+                .from('orders')
+                .insert([orderPayload]);
+
+            if (ordErr) throw ordErr;
+
+            // Mark this local order as synced
+            order._synced_to_supabase = true;
+            syncedOrdersCount++;
+        }
+
+        // Save updated localOrders back to localStorage
+        localStorage.setItem('gn_orders', JSON.stringify(localOrders));
+
+        return {
+            success: true,
+            count: syncedOrdersCount,
+            customersCount: syncedCustCount,
+            message: `Successfully uploaded ${syncedOrdersCount} order(s) to Supabase! Now visible on all family phones.`
+        };
     }
 };
 
