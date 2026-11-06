@@ -1,21 +1,37 @@
 /**
  * GIR NAARI - UNIFIED DATA ACCESS REPOSITORY
  * Performs all CRUD operations on the 3 tables (customers, orders, reminders).
- * Uses live Supabase PostgreSQL client, with seamless fallback for testing.
+ * Uses live Supabase PostgreSQL client with automatic self-healing on PGRST125 path errors.
  */
 
 window.DB = {
     // --------------------------------------------------------------------------
+    // SELF-HEALING SUPABASE QUERY RUNNER
+    // Catches PGRST125 ("Invalid path specified in request URL"), normalizes origin, and retries automatically
+    // --------------------------------------------------------------------------
+    async exec(queryFn) {
+        let client = window.GirNaariDB.getClient();
+        if (!client || window.GirNaariDB.isMock()) return null;
+
+        let res = await queryFn(client);
+        if (res && res.error && res.error.code === 'PGRST125') {
+            console.warn('⚠️ PGRST125 invalid path detected. Force-reinitializing Supabase client with clean origin and retrying...');
+            window.GirNaariDB.forceReinit();
+            client = window.GirNaariDB.getClient();
+            res = await queryFn(client);
+        }
+        if (res && res.error) throw res.error;
+        return res ? res.data : null;
+    },
+
+    // --------------------------------------------------------------------------
     // CUSTOMERS
     // --------------------------------------------------------------------------
     async getCustomers() {
-        const client = window.GirNaariDB.getClient();
-        if (client && !window.GirNaariDB.isMock()) {
-            const { data, error } = await client
-                .from('customers')
-                .select('*')
-                .order('name', { ascending: true });
-            if (error) throw error;
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            const data = await this.exec(c => 
+                c.from('customers').select('*').order('name', { ascending: true })
+            );
             return data || [];
         } else {
             const items = JSON.parse(localStorage.getItem('gn_customers') || '[]');
@@ -24,15 +40,10 @@ window.DB = {
     },
 
     async getCustomerById(id) {
-        const client = window.GirNaariDB.getClient();
-        if (client && !window.GirNaariDB.isMock()) {
-            const { data, error } = await client
-                .from('customers')
-                .select('*')
-                .eq('id', id)
-                .single();
-            if (error) throw error;
-            return data;
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            return await this.exec(c => 
+                c.from('customers').select('*').eq('id', id).single()
+            );
         } else {
             const items = JSON.parse(localStorage.getItem('gn_customers') || '[]');
             return items.find(c => c.id === id) || null;
@@ -51,15 +62,10 @@ window.DB = {
             notes: (customer.notes || '').trim()
         };
 
-        const client = window.GirNaariDB.getClient();
-        if (client && !window.GirNaariDB.isMock()) {
-            const { data, error } = await client
-                .from('customers')
-                .insert([payload])
-                .select()
-                .single();
-            if (error) throw error;
-            return data;
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            return await this.exec(c => 
+                c.from('customers').insert([payload]).select().single()
+            );
         } else {
             const items = JSON.parse(localStorage.getItem('gn_customers') || '[]');
             const newCustomer = {
@@ -84,16 +90,10 @@ window.DB = {
             notes: (customer.notes || '').trim()
         };
 
-        const client = window.GirNaariDB.getClient();
-        if (client && !window.GirNaariDB.isMock()) {
-            const { data, error } = await client
-                .from('customers')
-                .update(payload)
-                .eq('id', id)
-                .select()
-                .single();
-            if (error) throw error;
-            return data;
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            return await this.exec(c => 
+                c.from('customers').update(payload).eq('id', id).select().single()
+            );
         } else {
             const items = JSON.parse(localStorage.getItem('gn_customers') || '[]');
             const index = items.findIndex(c => c.id === id);
@@ -105,13 +105,8 @@ window.DB = {
     },
 
     async deleteCustomer(id) {
-        const client = window.GirNaariDB.getClient();
-        if (client && !window.GirNaariDB.isMock()) {
-            const { error } = await client
-                .from('customers')
-                .delete()
-                .eq('id', id);
-            if (error) throw error;
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            await this.exec(c => c.from('customers').delete().eq('id', id));
             return true;
         } else {
             let items = JSON.parse(localStorage.getItem('gn_customers') || '[]');
@@ -134,14 +129,13 @@ window.DB = {
     // ORDERS
     // --------------------------------------------------------------------------
     async getOrders() {
-        const client = window.GirNaariDB.getClient();
-        if (client && !window.GirNaariDB.isMock()) {
-            const { data, error } = await client
-                .from('orders')
-                .select('*, customers (id, name, phone, area)')
-                .order('order_date', { ascending: false })
-                .order('created_at', { ascending: false });
-            if (error) throw error;
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            const data = await this.exec(c => 
+                c.from('orders')
+                    .select('*, customers (id, name, phone, area)')
+                    .order('order_date', { ascending: false })
+                    .order('created_at', { ascending: false })
+            );
             return data || [];
         } else {
             const orders = JSON.parse(localStorage.getItem('gn_orders') || '[]');
@@ -156,15 +150,14 @@ window.DB = {
     },
 
     async getOrdersByCustomerId(customerId) {
-        const client = window.GirNaariDB.getClient();
-        if (client && !window.GirNaariDB.isMock()) {
-            const { data, error } = await client
-                .from('orders')
-                .select('*')
-                .eq('customer_id', customerId)
-                .order('order_date', { ascending: false })
-                .order('created_at', { ascending: false });
-            if (error) throw error;
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            const data = await this.exec(c => 
+                c.from('orders')
+                    .select('*')
+                    .eq('customer_id', customerId)
+                    .order('order_date', { ascending: false })
+                    .order('created_at', { ascending: false })
+            );
             return data || [];
         } else {
             const orders = JSON.parse(localStorage.getItem('gn_orders') || '[]');
@@ -192,15 +185,10 @@ window.DB = {
             notes: (order.notes || '').trim()
         };
 
-        const client = window.GirNaariDB.getClient();
-        if (client && !window.GirNaariDB.isMock()) {
-            const { data, error } = await client
-                .from('orders')
-                .insert([payload])
-                .select()
-                .single();
-            if (error) throw error;
-            return data;
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            return await this.exec(c => 
+                c.from('orders').insert([payload]).select().single()
+            );
         } else {
             const orders = JSON.parse(localStorage.getItem('gn_orders') || '[]');
             const newOrder = {
@@ -231,16 +219,10 @@ window.DB = {
             notes: (order.notes || '').trim()
         };
 
-        const client = window.GirNaariDB.getClient();
-        if (client && !window.GirNaariDB.isMock()) {
-            const { data, error } = await client
-                .from('orders')
-                .update(payload)
-                .eq('id', id)
-                .select()
-                .single();
-            if (error) throw error;
-            return data;
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            return await this.exec(c => 
+                c.from('orders').update(payload).eq('id', id).select().single()
+            );
         } else {
             const orders = JSON.parse(localStorage.getItem('gn_orders') || '[]');
             const idx = orders.findIndex(o => o.id === id);
@@ -252,13 +234,8 @@ window.DB = {
     },
 
     async deleteOrder(id) {
-        const client = window.GirNaariDB.getClient();
-        if (client && !window.GirNaariDB.isMock()) {
-            const { error } = await client
-                .from('orders')
-                .delete()
-                .eq('id', id);
-            if (error) throw error;
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            await this.exec(c => c.from('orders').delete().eq('id', id));
             return true;
         } else {
             let orders = JSON.parse(localStorage.getItem('gn_orders') || '[]');
@@ -272,13 +249,10 @@ window.DB = {
     // REMINDERS & CONTACT HISTORY
     // --------------------------------------------------------------------------
     async getReminders() {
-        const client = window.GirNaariDB.getClient();
-        if (client && !window.GirNaariDB.isMock()) {
-            const { data, error } = await client
-                .from('reminders')
-                .select('*')
-                .order('last_contacted_at', { ascending: false });
-            if (error) throw error;
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            const data = await this.exec(c => 
+                c.from('reminders').select('*').order('last_contacted_at', { ascending: false })
+            );
             return data || [];
         } else {
             return JSON.parse(localStorage.getItem('gn_reminders') || '[]');
@@ -292,15 +266,10 @@ window.DB = {
             notes: notes.trim()
         };
 
-        const client = window.GirNaariDB.getClient();
-        if (client && !window.GirNaariDB.isMock()) {
-            const { data, error } = await client
-                .from('reminders')
-                .insert([payload])
-                .select()
-                .single();
-            if (error) throw error;
-            return data;
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            return await this.exec(c => 
+                c.from('reminders').insert([payload]).select().single()
+            );
         } else {
             const reminders = JSON.parse(localStorage.getItem('gn_reminders') || '[]');
             const newReminder = {
@@ -385,7 +354,9 @@ window.DB = {
             if (!latestOrder) {
                 // If customer has never ordered, check registration date
                 const createdDate = new Date(customer.created_at || now);
-                const diffDays = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
+                const todayStr = now.toISOString().split('T')[0];
+                const createdStr = createdDate.toISOString().split('T')[0];
+                const diffDays = Math.max(0, Math.round((new Date(todayStr + 'T00:00:00') - new Date(createdStr + 'T00:00:00')) / (1000 * 60 * 60 * 24)));
                 if (diffDays >= thresholdDays) {
                     const lastReminder = latestReminderMap.get(customer.id);
                     dueList.push({
@@ -399,8 +370,9 @@ window.DB = {
                     });
                 }
             } else {
-                const orderDate = new Date(latestOrder.order_date);
-                const diffDays = Math.floor((now - orderDate) / (1000 * 60 * 60 * 24));
+                const todayStr = now.toISOString().split('T')[0];
+                const orderStr = latestOrder.order_date;
+                const diffDays = Math.max(0, Math.round((new Date(todayStr + 'T00:00:00') - new Date(orderStr + 'T00:00:00')) / (1000 * 60 * 60 * 24)));
 
                 if (diffDays >= thresholdDays) {
                     const lastReminder = latestReminderMap.get(customer.id);

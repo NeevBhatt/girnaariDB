@@ -282,6 +282,12 @@ window.OrdersModule = {
         const total = parseFloat(document.getElementById('orderTotal').value) || (qty * price);
         const amountPaid = parseFloat(document.getElementById('orderAmountPaid').value) || 0;
 
+        if (amountPaid < 0 || isNaN(amountPaid)) {
+            window.App.showToast('Amount paid cannot be negative.', 'error');
+            document.getElementById('orderAmountPaid').focus();
+            return;
+        }
+
         if (amountPaid > total) {
             if (!confirm(`Amount paid (₹${amountPaid}) is greater than total order amount (₹${total}). Do you wish to continue?`)) {
                 return;

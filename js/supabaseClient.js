@@ -9,15 +9,27 @@
 
     // Clean URL: strictly extract origin (https://xyz.supabase.co) ignoring any paths or /rest/v1
     function cleanSupabaseUrl(url) {
-        if (!url) return 'https://xhfrdursmcibnnqrnwwg.supabase.co';
+        const fallback = 'https://xhfrdursmcibnnqrnwwg.supabase.co';
+        if (!url || typeof url !== 'string') return fallback;
+        let u = url.trim();
+        if (!u) return fallback;
+
+        if (u.includes('.supabase.co')) {
+            const parts = u.split('.supabase.co');
+            let domainPart = parts[0];
+            if (!domainPart.startsWith('http://') && !domainPart.startsWith('https://')) {
+                domainPart = 'https://' + domainPart.replace(/^\/+/, '');
+            }
+            return domainPart + '.supabase.co';
+        }
+
         try {
-            let u = url.trim();
             if (!u.startsWith('http://') && !u.startsWith('https://')) {
                 u = 'https://' + u;
             }
             return new URL(u).origin;
         } catch (e) {
-            return 'https://xhfrdursmcibnnqrnwwg.supabase.co';
+            return fallback;
         }
     }
 
@@ -56,6 +68,13 @@
         if (isMockMode) {
             initLocalStorageData();
         }
+    }
+
+    // Force reinitialize with the clean project URL
+    function forceReinit() {
+        window.CONFIG.supabase.url = 'https://xhfrdursmcibnnqrnwwg.supabase.co';
+        localStorage.setItem('girnaari_supabase_url', window.CONFIG.supabase.url);
+        initSupabase();
     }
 
     // Default seed data for offline preview if database not connected
@@ -204,6 +223,7 @@
         isMock: () => isMockMode,
         getClient: () => client,
         cleanUrl: cleanSupabaseUrl,
+        forceReinit: forceReinit,
 
         // Test Supabase connection
         async testConnection() {

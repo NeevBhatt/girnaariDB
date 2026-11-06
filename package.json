@@ -5,6 +5,7 @@
   "main": "serve.js",
   "scripts": {
     "start": "node serve.js",
+    "build": "node -e 'console.log(\"Build complete\")'",
     "test": "node test_run.js"
   },
   "keywords": [
@@ -14,6 +15,8 @@
     "supabase"
   ],
   "author": "Neev Bhatt",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0"
+  }
 }
-

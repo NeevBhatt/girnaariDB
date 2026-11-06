@@ -8,9 +8,21 @@
 // Normalizes URL so only the origin (https://xyz.supabase.co) is ever used
 function normalizeSupabaseUrl(inputUrl) {
     const fallback = 'https://xhfrdursmcibnnqrnwwg.supabase.co';
-    if (!inputUrl) return fallback;
+    if (!inputUrl || typeof inputUrl !== 'string') return fallback;
+    let u = inputUrl.trim();
+    if (!u) return fallback;
+
+    // Direct string split guard: if it contains .supabase.co, take only the prefix + .supabase.co
+    if (u.includes('.supabase.co')) {
+        const parts = u.split('.supabase.co');
+        let domainPart = parts[0];
+        if (!domainPart.startsWith('http://') && !domainPart.startsWith('https://')) {
+            domainPart = 'https://' + domainPart.replace(/^\/+/, '');
+        }
+        return domainPart + '.supabase.co';
+    }
+
     try {
-        let u = inputUrl.trim();
         if (!u.startsWith('http://') && !u.startsWith('https://')) {
             u = 'https://' + u;
         }

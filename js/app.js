@@ -249,8 +249,9 @@ window.App = {
 
     async testSupabaseConnection() {
         const resultEl = document.getElementById('supabaseTestResult');
-        const url = document.getElementById('settingSupabaseUrl').value.trim();
-        const key = document.getElementById('settingSupabaseKey').value.trim();
+        const rawUrl = document.getElementById('settingSupabaseUrl').value.trim();
+        const key = document.getElementById('settingSupabaseKey').value.trim() || window.CONFIG.supabase.anonKey;
+        const url = window.GirNaariDB.cleanUrl(rawUrl);
 
         if (!url || !key) {
             resultEl.innerHTML = '<span class="text-danger">Please enter both URL and Publishable/Anon Key first.</span>';

@@ -1,4 +1,4 @@
-# 📖 Gir Naari – Family User Manual (વપરાશ માર્ગદર્શિકા)
+resume# 📖 Gir Naari – Family User Manual (વપરાશ માર્ગદર્શિકા)
 
 A simple, step-by-step guide for **Papa**, **Mummy**, and **Neev** on how to use the Gir Naari digital register on mobile phones.
 

@@ -267,6 +267,15 @@ window.CustomersModule = {
             return;
         }
 
+        // Check for duplicate mobile number
+        const clean10 = phone.replace(/[^0-9]/g, '').slice(-10);
+        const duplicateCust = this.customers.find(c => c.id !== id && (c.phone || '').replace(/[^0-9]/g, '').slice(-10) === clean10);
+        if (duplicateCust) {
+            if (!confirm(`A customer named "${duplicateCust.name}" already has this mobile number (${clean10}) in ${duplicateCust.area}.\n\nDo you still want to proceed?`)) {
+                return;
+            }
+        }
+
         const submitBtn = document.getElementById('btnSaveCustomer');
         if (submitBtn) {
             submitBtn.disabled = true;
