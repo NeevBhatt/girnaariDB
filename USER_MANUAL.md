@@ -48,7 +48,7 @@ At the bottom of the screen, you will see 5 simple buttons:
 
 ---
 
-## 🛒 Step 4: How to Add a New Ghee Order (Daily Routine)
+## 🛒 Step 4: How to Add a New Order (Daily Routine)
 
 Tap the middle **➕ Add Order** button at the bottom:
 
@@ -56,26 +56,35 @@ Tap the middle **➕ Add Order** button at the bottom:
    - Type the customer's name or phone number in the search box.
    - Tap their name when it appears.
    - *(If it is a new customer, tap **"➕ Add New Customer"** to add them in 5 seconds).*
-2. **Order Date:**
+2. **Select Product:**
+   - **🌿 A2 Gir Cow Desi Ghee** (Fixed Cost: ₹750/L)
+   - **🥛 Milk Powder 500 gm** (Selling: ₹300 | Cost: ₹170 | Profit: ₹130)
+   - **🍯 Gir Forest Honey 250 gm** (Selling: ₹200 | Cost: ₹70 | Profit: ₹130)
+   - **🍯 Gir Forest Honey 500 gm** (Selling: ₹300 | Cost: ₹130 | Profit: ₹170)
+   - **📦 Other / Custom Item**
+3. **Order Date:**
    - Automatically set to today. (Can change if recording yesterday's order).
-3. **Quantity & Unit:**
+4. **Quantity & Unit:**
    - Type the quantity (e.g., `1`, `2`, `5`, `0.5`).
-   - Select unit (`litre`, `kg`, `gram`, `ml`).
-4. **Enter Selling Price (Manual Price):**
-   - Type the agreed selling price for this order (e.g. `1200` or `5500`).
-   - The app **never fixes the price** — you have full freedom to enter the exact rate agreed with regular buyers, shops, or wholesalers.
-5. **Total Calculation:**
-   - The app automatically calculates: $\text{Quantity} \times \text{Price}$.
-6. **Payment Received:**
-   - If paid in full: Tap the **[✓ Full Paid]** shortcut button.
-   - If nothing paid yet: Tap **[✕ Unpaid (₹0)]**.
-   - If partial payment: Type the amount received (e.g. `1000`), or tap **[½ Half Paid]**.
-   - The remaining pending balance will be calculated in red automatically.
-7. **Payment Method:**
+   - Units update automatically based on product (`litre`, `kg`, `pack (500g)`, `jar (250g)`).
+5. **Selling Price (Manual Rate):**
+   - Pre-fills standard rate (e.g. ₹1,200 for ghee, ₹300 for milk powder, ₹200 for honey 250g).
+   - You can edit this freely if giving a special discount or wholesale rate!
+6. **Delivery Charge (If Applicable):**
+   - Tap **[✓ Free (₹0)]**, or tap **[+₹50]**, **[+₹100]** if delivery is charged.
+   - The delivery charge is automatically added to the customer's bill.
+7. **Live Profit & Margin Display (નફો ગણતરી):**
+   - The app instantly calculates and shows your exact net profit and profit margin percentage!  
+   *(e.g., "Order Total: ₹1,250 | +₹500 Profit (40%)")*.
+8. **Payment Received:**
+   - If paid in full: Tap **[✓ Full Paid]**.
+   - If unpaid: Tap **[✕ Unpaid (₹0)]**.
+   - If partial: Tap **[½ Half Paid]** or type amount received.
+9. **Payment Method:**
    - Select **Cash** or **UPI** (Google Pay / PhonePe) or **Bank Transfer**.
-8. **Save Order:**
-   - Tap **💾 Save Ghee Order**.
-   - A success message will appear and the form will clear for the next order.
+10. **Save Order:**
+   - Tap **💾 Save Order**.
+   - Recorded to Supabase with real-time sync to all family phones!
 
 ---
 

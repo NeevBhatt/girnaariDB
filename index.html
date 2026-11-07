@@ -8,7 +8,7 @@
     <title>Gir Naari - Customer & Order Register</title>
 
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="css/style.css?v=2.3.0">
+    <link rel="stylesheet" href="css/style.css?v=2.4.0">
 
     <!-- Supabase JS SDK (v2 via CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -71,6 +71,10 @@
                 <div class="dash-card card-primary">
                     <span class="card-label">💰 Today's Sales</span>
                     <span id="dashTodaySales" class="card-value">₹0</span>
+                </div>
+                <div class="dash-card card-success">
+                    <span class="card-label">✨ Today's Profit</span>
+                    <span id="dashTodayProfit" class="card-value text-success" style="color: #16a34a;">₹0</span>
                 </div>
                 <div class="dash-card card-pending clickable" onclick="App.navigateTo('reports')">
                     <span class="card-label">⚠️ Pending Balance</span>
@@ -148,6 +152,18 @@
                         </div>
                     </div>
 
+                    <!-- Product Selection -->
+                    <div class="form-group">
+                        <label class="form-label" for="orderProduct">Select Product <span class="required">*</span></label>
+                        <select id="orderProduct" class="form-select" style="font-weight: 700; font-size: 15px;">
+                            <option value="ghee" selected>🌿 A2 Gir Cow Desi Ghee (Cost: ₹750/L)</option>
+                            <option value="milk_powder_500g">🥛 Milk Powder 500 gm (₹300 | Cost: ₹170)</option>
+                            <option value="honey_250g">🍯 Gir Forest Honey 250 gm (₹200 | Cost: ₹70)</option>
+                            <option value="honey_500g">🍯 Gir Forest Honey 500 gm (₹300 | Cost: ₹130)</option>
+                            <option value="custom">📦 Other / Custom Item</option>
+                        </select>
+                    </div>
+
                     <!-- Order Date -->
                     <div class="form-group">
                         <label class="form-label" for="orderDate">Order Date <span class="required">*</span></label>
@@ -182,8 +198,8 @@
                     <!-- MANUAL PRICING (Never Hardcoded!) -->
                     <div class="form-group">
                         <label class="form-label" for="orderPrice">
-                            Manual Price (₹) per Unit <span class="required">*</span>
-                            <span class="hint">(e.g. ₹1,200/L or wholesale rate)</span>
+                            Selling Price (₹) per Unit <span class="required">*</span>
+                            <span class="hint" id="orderPriceHint">(e.g. ₹1,200/L or agreed rate)</span>
                         </label>
                         <input 
                             type="number" 
@@ -196,11 +212,33 @@
                         >
                     </div>
 
+                    <!-- Delivery Charge (If Applicable) -->
+                    <div class="form-group">
+                        <label class="form-label" for="orderDeliveryCharge">
+                            Delivery Charge (₹)
+                            <span class="hint">(If applicable, added to bill)</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="orderDeliveryCharge" 
+                            class="form-control" 
+                            placeholder="0 (Free Delivery)" 
+                            min="0" 
+                            step="any"
+                        >
+                        <div class="quick-delivery-row">
+                            <button type="button" class="btn-quick-deliv" data-val="0">✓ Free (₹0)</button>
+                            <button type="button" class="btn-quick-deliv" data-val="50">+₹50</button>
+                            <button type="button" class="btn-quick-deliv" data-val="100">+₹100</button>
+                            <button type="button" class="btn-quick-deliv" data-val="150">+₹150</button>
+                        </div>
+                    </div>
+
                     <!-- Total Amount (Calculated Automatically) -->
                     <div class="form-group">
                         <label class="form-label" for="orderTotal">
                             Total Order Amount (₹)
-                            <span class="hint">(Quantity × Price)</span>
+                            <span class="hint">((Qty × Price) + Delivery)</span>
                         </label>
                         <input 
                             type="number" 
@@ -210,6 +248,9 @@
                             style="background-color: var(--bg-subtle); font-weight: 800; font-size: 18px; color: var(--primary-dark);"
                         >
                     </div>
+
+                    <!-- Live Profit & Margin Indicator Box -->
+                    <div id="orderProfitDisplay"></div>
 
                     <!-- Amount Paid -->
                     <div class="form-group">
@@ -364,6 +405,10 @@
                         <span class="card-label">💰 Total Sales</span>
                         <span id="repTotalSales" class="card-value">₹0</span>
                     </div>
+                    <div class="dash-card card-success">
+                        <span class="card-label">✨ Net Profit</span>
+                        <span id="repTotalProfit" class="card-value text-success" style="color: #16a34a;">₹0</span>
+                    </div>
                     <div class="dash-card">
                         <span class="card-label">📦 Quantity Sold</span>
                         <span id="repTotalQuantity" class="card-value">0 L</span>
@@ -398,11 +443,11 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Customer</th>
-                                <th>Qty</th>
+                                <th>Product / Qty</th>
                                 <th>Rate</th>
                                 <th>Total</th>
                                 <th>Paid</th>
-                                <th>Pending</th>
+                                <th>Profit</th>
                             </tr>
                         </thead>
                         <tbody id="reportOrdersTableBody">
@@ -778,18 +823,18 @@
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- Application JavaScript Modules (with cache-buster) -->
-    <script src="js/config.js?v=2.3.0"></script>
-    <script src="js/supabaseClient.js?v=2.3.0"></script>
-    <script src="js/db.js?v=2.3.0"></script>
-    <script src="js/auth.js?v=2.3.0"></script>
-    <script src="js/dashboard.js?v=2.3.0"></script>
-    <script src="js/orders.js?v=2.3.0"></script>
-    <script src="js/customers.js?v=2.3.0"></script>
-    <script src="js/payments.js?v=2.3.0"></script>
-    <script src="js/reminders.js?v=2.3.0"></script>
-    <script src="js/reports.js?v=2.3.0"></script>
-    <script src="js/import.js?v=2.3.0"></script>
-    <script src="js/app.js?v=2.3.0"></script>
+    <script src="js/config.js?v=2.4.0"></script>
+    <script src="js/supabaseClient.js?v=2.4.0"></script>
+    <script src="js/db.js?v=2.4.0"></script>
+    <script src="js/auth.js?v=2.4.0"></script>
+    <script src="js/dashboard.js?v=2.4.0"></script>
+    <script src="js/orders.js?v=2.4.0"></script>
+    <script src="js/customers.js?v=2.4.0"></script>
+    <script src="js/payments.js?v=2.4.0"></script>
+    <script src="js/reminders.js?v=2.4.0"></script>
+    <script src="js/reports.js?v=2.4.0"></script>
+    <script src="js/import.js?v=2.4.0"></script>
+    <script src="js/app.js?v=2.4.0"></script>
 </body>
 </html>
 

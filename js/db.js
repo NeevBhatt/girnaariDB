@@ -128,7 +128,69 @@ window.DB = {
     // --------------------------------------------------------------------------
     // ORDERS
     // --------------------------------------------------------------------------
+    enrichOrder(order) {
+        if (!order) return order;
+
+        let productName = 'A2 Gir Cow Desi Ghee';
+        let deliveryCharge = 0;
+        let costPrice = null;
+        let profit = null;
+        let cleanNotes = order.notes || '';
+
+        // Check if notes contains metadata tag: [Product: ... | Cost: ... | Delivery: ... | Profit: ...]
+        const metaMatch = cleanNotes.match(/\[Product:\s*([^|]+?)\s*\|\s*Cost:\s*₹?([0-9.]+)\s*\|\s*Delivery:\s*₹?([0-9.]+)\s*\|\s*Profit:\s*₹?([0-9.-]+)\]/);
+        if (metaMatch) {
+            productName = metaMatch[1].trim();
+            costPrice = parseFloat(metaMatch[2]) || 0;
+            deliveryCharge = parseFloat(metaMatch[3]) || 0;
+            profit = parseFloat(metaMatch[4]) || 0;
+            cleanNotes = cleanNotes.replace(metaMatch[0], '').trim();
+        } else {
+            // Backward compatibility for existing/historical orders:
+            const notesLower = (order.notes || '').toLowerCase();
+            const qty = parseFloat(order.quantity) || 0;
+            const unit = (order.unit || '').toLowerCase();
+
+            if (notesLower.includes('milk powder')) {
+                productName = 'Milk Powder (500 gm)';
+                costPrice = qty * 170;
+            } else if (notesLower.includes('honey 250') || (notesLower.includes('honey') && parseFloat(order.price) === 200)) {
+                productName = 'Gir Forest Honey (250 gm)';
+                costPrice = qty * 70;
+            } else if (notesLower.includes('honey 500') || (notesLower.includes('honey') && parseFloat(order.price) === 300)) {
+                productName = 'Gir Forest Honey (500 gm)';
+                costPrice = qty * 130;
+            } else {
+                // Default: A2 Gir Cow Desi Ghee (Fixed cost ₹750/L)
+                productName = 'A2 Gir Cow Desi Ghee';
+                if (unit === 'ml' || unit === 'gram') {
+                    costPrice = (qty / 1000) * 750;
+                } else {
+                    costPrice = qty * 750;
+                }
+            }
+
+            const total = parseFloat(order.total) || 0;
+            deliveryCharge = Math.max(0, Math.round((total - (qty * (parseFloat(order.price) || 0))) * 100) / 100);
+            profit = Math.round((total - costPrice) * 100) / 100;
+        }
+
+        const total = parseFloat(order.total) || 0;
+        const margin = total > 0 ? Math.round((profit / total) * 100) : 0;
+
+        return {
+            ...order,
+            product_name: productName,
+            delivery_charge: deliveryCharge,
+            cost_price: Math.round(costPrice * 100) / 100,
+            profit: Math.round(profit * 100) / 100,
+            profit_margin: margin,
+            clean_notes: cleanNotes
+        };
+    },
+
     async getOrders() {
+        let list = [];
         if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
             const data = await this.exec(c => 
                 c.from('orders')
@@ -136,20 +198,23 @@ window.DB = {
                     .order('order_date', { ascending: false })
                     .order('created_at', { ascending: false })
             );
-            return data || [];
+            list = data || [];
         } else {
             const orders = JSON.parse(localStorage.getItem('gn_orders') || '[]');
             const customers = JSON.parse(localStorage.getItem('gn_customers') || '[]');
             const custMap = new Map(customers.map(c => [c.id, c]));
 
-            return orders.map(o => ({
+            list = orders.map(o => ({
                 ...o,
                 customers: custMap.get(o.customer_id) || { name: 'Unknown Customer', phone: '', area: '' }
             })).sort((a, b) => new Date(b.order_date) - new Date(a.order_date));
         }
+
+        return list.map(o => this.enrichOrder(o));
     },
 
     async getOrdersByCustomerId(customerId) {
+        let list = [];
         if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
             const data = await this.exec(c => 
                 c.from('orders')
@@ -158,18 +223,21 @@ window.DB = {
                     .order('order_date', { ascending: false })
                     .order('created_at', { ascending: false })
             );
-            return data || [];
+            list = data || [];
         } else {
             const orders = JSON.parse(localStorage.getItem('gn_orders') || '[]');
-            return orders
+            list = orders
                 .filter(o => o.customer_id === customerId)
                 .sort((a, b) => new Date(b.order_date) - new Date(a.order_date));
         }
+
+        return list.map(o => this.enrichOrder(o));
     },
 
     async getOrderById(id) {
+        let order = null;
         if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
-            return await this.exec(c => 
+            order = await this.exec(c => 
                 c.from('orders')
                     .select('*, customers (id, name, phone, area)')
                     .eq('id', id)
@@ -177,15 +245,32 @@ window.DB = {
             );
         } else {
             const orders = await this.getOrders();
-            return orders.find(o => o.id === id) || null;
+            order = orders.find(o => o.id === id) || null;
         }
+
+        return order ? this.enrichOrder(order) : null;
     },
 
     async createOrder(order) {
         const quantity = parseFloat(order.quantity) || 0;
         const price = parseFloat(order.price) || 0;
-        const total = parseFloat(order.total) || (quantity * price);
+        const deliveryCharge = parseFloat(order.delivery_charge) || 0;
+        const total = parseFloat(order.total) || ((quantity * price) + deliveryCharge);
         const amount_paid = parseFloat(order.amount_paid) || 0;
+
+        // Build metadata tag for product, cost, delivery, and profit
+        let notesText = (order.notes || '').trim();
+        if (order.product_name || order.cost_price !== undefined) {
+            const prodName = order.product_name || 'A2 Gir Cow Desi Ghee';
+            const cost = parseFloat(order.cost_price) || 0;
+            const profit = parseFloat(order.profit) || (total - cost);
+            const metaTag = `[Product: ${prodName} | Cost: ₹${cost} | Delivery: ₹${deliveryCharge} | Profit: ₹${profit}]`;
+            
+            // Only prepend if tag not already present
+            if (!notesText.includes('[Product:')) {
+                notesText = notesText ? `${metaTag} ${notesText}` : metaTag;
+            }
+        }
 
         const payload = {
             customer_id: order.customer_id,
@@ -196,11 +281,12 @@ window.DB = {
             total: total,
             amount_paid: amount_paid,
             payment_method: order.payment_method || 'Cash',
-            notes: (order.notes || '').trim()
+            notes: notesText
         };
 
+        let saved = null;
         if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
-            return await this.exec(c => 
+            saved = await this.exec(c => 
                 c.from('orders').insert([payload]).select().single()
             );
         } else {
@@ -212,8 +298,10 @@ window.DB = {
             };
             orders.unshift(newOrder);
             localStorage.setItem('gn_orders', JSON.stringify(orders));
-            return newOrder;
+            saved = newOrder;
         }
+
+        return this.enrichOrder(saved);
     },
 
     async updateOrder(id, order) {
@@ -305,12 +393,14 @@ window.DB = {
         let totalQtyLitre = 0;
         let totalAmount = 0;
         let totalPaid = 0;
+        let totalProfit = 0;
         let latestOrderDate = null;
 
         for (const order of orders) {
             totalAmount += parseFloat(order.total) || 0;
             totalPaid += parseFloat(order.amount_paid) || 0;
             totalQtyLitre += parseFloat(order.quantity) || 0;
+            totalProfit += parseFloat(order.profit) || 0;
 
             if (!latestOrderDate || new Date(order.order_date) > new Date(latestOrderDate)) {
                 latestOrderDate = order.order_date;
@@ -322,6 +412,7 @@ window.DB = {
             totalQuantity: totalQtyLitre,
             totalAmount: totalAmount,
             totalPaid: totalPaid,
+            totalProfit: Math.round(totalProfit * 100) / 100,
             pendingBalance: Math.max(0, totalAmount - totalPaid),
             latestOrderDate: latestOrderDate,
             orders: orders
@@ -434,17 +525,22 @@ window.DB = {
         const todayStr = new Date().toISOString().split('T')[0];
         let todayOrdersCount = 0;
         let todaySales = 0;
+        let todayProfit = 0;
+        let totalProfit = 0;
         let totalPendingPayments = 0;
 
         for (const order of orders) {
             const total = parseFloat(order.total) || 0;
             const paid = parseFloat(order.amount_paid) || 0;
+            const profit = parseFloat(order.profit) || 0;
             const pending = Math.max(0, total - paid);
             totalPendingPayments += pending;
+            totalProfit += profit;
 
             if (order.order_date === todayStr) {
                 todayOrdersCount++;
                 todaySales += total;
+                todayProfit += profit;
             }
         }
 
@@ -454,6 +550,8 @@ window.DB = {
             totalCustomers: customers.length,
             todayOrdersCount,
             todaySales,
+            todayProfit: Math.round(todayProfit * 100) / 100,
+            totalProfit: Math.round(totalProfit * 100) / 100,
             totalPendingPayments,
             dueRemindersCount: reminderData.totalDue,
             recentOrders

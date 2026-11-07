@@ -386,12 +386,12 @@ window.CustomersModule = {
                         <strong class="val">${summary.totalOrders}</strong>
                     </div>
                     <div class="stat-pill">
-                        <span class="lbl">Total Ghee</span>
-                        <strong class="val">${summary.totalQuantity} L</strong>
-                    </div>
-                    <div class="stat-pill">
                         <span class="lbl">Total Billing</span>
                         <strong class="val">₹${summary.totalAmount.toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div class="stat-pill">
+                        <span class="lbl">Total Profit</span>
+                        <strong class="val text-success" style="color: #16a34a;">+₹${(summary.totalProfit || 0).toLocaleString('en-IN')}</strong>
                     </div>
                     <div class="stat-pill ${summary.pendingBalance > 0 ? 'alert' : ''}">
                         <span class="lbl">Pending Balance</span>
@@ -416,18 +416,20 @@ window.CustomersModule = {
                     html += `
                         <div class="history-order-card">
                             <div class="hoc-top">
-                                <span class="order-date">📅 ${this.formatDate(o.order_date)}</span>
+                                <span class="order-date">📅 ${this.formatDate(o.order_date)} &bull; <span class="badge badge-product">${this.escapeHTML(o.product_name || 'A2 Cow Ghee')}</span></span>
                                 <span class="order-payment-tag ${balance > 0 ? 'unpaid' : 'paid'}">
-                                    ${balance > 0 ? `Pending: ₹${balance}` : 'Paid ✓'}
+                                    ${balance > 0 ? `Pending: ₹${balance.toLocaleString('en-IN')}` : 'Paid ✓'}
                                 </span>
                             </div>
                             <div class="hoc-details">
-                                <span class="hoc-qty"><strong>${o.quantity} ${o.unit}</strong> @ ₹${o.price}/${o.unit}</span>
+                                <span class="hoc-qty"><strong>${o.quantity} ${o.unit}</strong> @ ₹${o.price}</span>
                                 <span class="hoc-total">Total: <strong>₹${Number(o.total).toLocaleString('en-IN')}</strong></span>
                             </div>
                             <div class="hoc-sub">
                                 <span>Paid: ₹${Number(o.amount_paid).toLocaleString('en-IN')} via ${o.payment_method}</span>
-                                ${o.notes ? `<div class="hoc-notes">📝 ${this.escapeHTML(o.notes)}</div>` : ''}
+                                ${o.profit !== undefined ? `<span> &bull; <strong class="text-success">+₹${Number(o.profit).toLocaleString('en-IN')} profit</strong> (${o.profit_margin || 0}%)</span>` : ''}
+                                ${o.delivery_charge > 0 ? `<span> &bull; 🚚 Delivery: ₹${o.delivery_charge}</span>` : ''}
+                                ${o.clean_notes ? `<div class="hoc-notes">📝 ${this.escapeHTML(o.clean_notes)}</div>` : ''}
                             </div>
                             ${balance > 0 ? `
                                 <div class="hoc-actions" style="margin-top: 8px;">

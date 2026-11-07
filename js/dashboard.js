@@ -25,6 +25,10 @@ window.DashboardModule = {
             const elTodaySales = document.getElementById('dashTodaySales');
             if (elTodaySales) elTodaySales.textContent = '₹' + stats.todaySales.toLocaleString('en-IN');
 
+            // Today's Profit
+            const elTodayProfit = document.getElementById('dashTodayProfit');
+            if (elTodayProfit) elTodayProfit.textContent = '₹' + (stats.todayProfit || 0).toLocaleString('en-IN');
+
             // Pending Payments
             const elPending = document.getElementById('dashPendingPayments');
             if (elPending) elPending.textContent = '₹' + stats.totalPendingPayments.toLocaleString('en-IN');
@@ -67,6 +71,7 @@ window.DashboardModule = {
                     <div class="dor-left">
                         <div class="dor-name-line">
                             <strong>${this.escapeHTML(custName)}</strong>
+                            <span class="badge badge-product">${this.escapeHTML(order.product_name || 'A2 Cow Ghee')}</span>
                             ${custArea ? `<span class="dor-area">📍 ${this.escapeHTML(custArea)}</span>` : ''}
                         </div>
                         <div class="dor-meta">
@@ -75,6 +80,7 @@ window.DashboardModule = {
                             <span>📅 ${this.formatDate(order.order_date)}</span>
                             <span>•</span>
                             <span class="pay-method">${order.payment_method}</span>
+                            ${order.profit !== undefined ? `<span>•</span><span class="text-success font-weight-bold">+₹${order.profit.toLocaleString('en-IN')} profit</span>` : ''}
                         </div>
                     </div>
                     <div class="dor-right">

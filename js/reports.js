@@ -108,6 +108,7 @@ window.ReportsModule = {
         let totalSales = 0;
         let totalReceived = 0;
         let totalPending = 0;
+        let totalProfit = 0;
         let cashCollected = 0;
         let onlineCollected = 0;
         let totalQtySold = 0;
@@ -116,11 +117,13 @@ window.ReportsModule = {
             const total = parseFloat(order.total) || 0;
             const paid = parseFloat(order.amount_paid) || 0;
             const pending = Math.max(0, total - paid);
+            const profit = parseFloat(order.profit) || 0;
             const qty = parseFloat(order.quantity) || 0;
 
             totalSales += total;
             totalReceived += paid;
             totalPending += pending;
+            totalProfit += profit;
             totalQtySold += qty;
 
             if (order.payment_method === 'Cash') {
@@ -131,12 +134,26 @@ window.ReportsModule = {
             }
         }
 
-        document.getElementById('repTotalSales').textContent = '₹' + totalSales.toLocaleString('en-IN');
-        document.getElementById('repTotalQuantity').textContent = totalQtySold + ' L';
-        document.getElementById('repCashCollected').textContent = '₹' + cashCollected.toLocaleString('en-IN');
-        document.getElementById('repOnlineCollected').textContent = '₹' + onlineCollected.toLocaleString('en-IN');
-        document.getElementById('repTotalPending').textContent = '₹' + totalPending.toLocaleString('en-IN');
-        document.getElementById('repOrdersCount').textContent = this.filteredOrders.length;
+        const elSales = document.getElementById('repTotalSales');
+        if (elSales) elSales.textContent = '₹' + totalSales.toLocaleString('en-IN');
+
+        const elProfit = document.getElementById('repTotalProfit');
+        if (elProfit) elProfit.textContent = '₹' + totalProfit.toLocaleString('en-IN');
+
+        const elQty = document.getElementById('repTotalQuantity');
+        if (elQty) elQty.textContent = totalQtySold + ' units';
+
+        const elCash = document.getElementById('repCashCollected');
+        if (elCash) elCash.textContent = '₹' + cashCollected.toLocaleString('en-IN');
+
+        const elOnline = document.getElementById('repOnlineCollected');
+        if (elOnline) elOnline.textContent = '₹' + onlineCollected.toLocaleString('en-IN');
+
+        const elPending = document.getElementById('repTotalPending');
+        if (elPending) elPending.textContent = '₹' + totalPending.toLocaleString('en-IN');
+
+        const elCount = document.getElementById('repOrdersCount');
+        if (elCount) elCount.textContent = this.filteredOrders.length;
     },
 
     renderFilteredOrdersTable() {
@@ -153,23 +170,30 @@ window.ReportsModule = {
             const total = parseFloat(order.total) || 0;
             const paid = parseFloat(order.amount_paid) || 0;
             const pending = Math.max(0, total - paid);
+            const profit = parseFloat(order.profit) || 0;
 
             return `
                 <tr>
                     <td>${order.order_date}</td>
                     <td><strong>${this.escapeHTML(custName)}</strong></td>
-                    <td>${order.quantity} ${order.unit}</td>
+                    <td>
+                        <span class="badge badge-product">${this.escapeHTML(order.product_name || 'A2 Ghee')}</span>
+                        <div style="font-size: 12px; color: var(--text-muted);">${order.quantity} ${order.unit}</div>
+                    </td>
                     <td>₹${order.price}</td>
-                    <td>₹${total.toLocaleString('en-IN')}</td>
+                    <td>
+                        <strong>₹${total.toLocaleString('en-IN')}</strong>
+                        ${order.delivery_charge > 0 ? `<div style="font-size: 11px; color: var(--text-muted);">+₹${order.delivery_charge} deliv</div>` : ''}
+                    </td>
                     <td>
                         <span class="badge ${paid >= total ? 'badge-success' : 'badge-warning'}">
-                            ₹${paid.toLocaleString('en-IN')} (${order.payment_method})
+                            ₹${paid.toLocaleString('en-IN')}
                         </span>
                     </td>
                     <td>
-                        ${pending > 0 
-                            ? `<span class="text-danger font-weight-bold">₹${pending.toLocaleString('en-IN')}</span>` 
-                            : `<span class="text-success">Paid</span>`}
+                        <span class="badge badge-success font-weight-bold" style="color: #16a34a; background: #dcfce7;">
+                            +₹${profit.toLocaleString('en-IN')}
+                        </span>
                     </td>
                 </tr>
             `;
@@ -283,7 +307,7 @@ window.ReportsModule = {
             return;
         }
 
-        const headers = ['Order Date', 'Customer Name', 'Phone', 'Area', 'Quantity', 'Unit', 'Price (Rs)', 'Total (Rs)', 'Amount Paid (Rs)', 'Pending (Rs)', 'Payment Method', 'Notes'];
+        const headers = ['Order Date', 'Customer Name', 'Phone', 'Area', 'Product', 'Quantity', 'Unit', 'Price (Rs)', 'Delivery Charge (Rs)', 'Total (Rs)', 'Cost Price (Rs)', 'Profit (Rs)', 'Amount Paid (Rs)', 'Pending (Rs)', 'Payment Method', 'Notes'];
         const rows = this.filteredOrders.map(o => {
             const total = parseFloat(o.total) || 0;
             const paid = parseFloat(o.amount_paid) || 0;
@@ -295,14 +319,18 @@ window.ReportsModule = {
                 `"${(cust.name || '').replace(/"/g, '""')}"`,
                 `"${(cust.phone || '').replace(/"/g, '""')}"`,
                 `"${(cust.area || '').replace(/"/g, '""')}"`,
+                `"${(o.product_name || 'A2 Gir Cow Desi Ghee').replace(/"/g, '""')}"`,
                 o.quantity,
                 o.unit,
                 o.price,
+                o.delivery_charge || 0,
                 total,
+                o.cost_price || 0,
+                o.profit || 0,
                 paid,
                 pending,
                 o.payment_method,
-                `"${(o.notes || '').replace(/"/g, '""')}"`
+                `"${(o.clean_notes || o.notes || '').replace(/"/g, '""')}"`
             ];
         });
 

@@ -1,7 +1,9 @@
 /**
  * GIR NAARI - ORDER MANAGEMENT MODULE
- * Simplest, fastest order entry with searchable customer picker,
- * manual pricing, dynamic totals, partial payment tracking, and zero duplicates.
+ * Supports multiple products (A2 Ghee, Milk Powder 500g, Honey 250g & 500g),
+ * fixed cost price tracking (Ghee: ₹750/L, Milk Powder: ₹170, Honey 250g: ₹70, Honey 500g: ₹130),
+ * optional delivery charges, live profit & margin preview, searchable customer picker,
+ * and seamless real-time Supabase sync.
  */
 
 window.OrdersModule = {
@@ -17,9 +19,11 @@ window.OrdersModule = {
     bindEvents() {
         const custSearchInput = document.getElementById('orderCustomerSearch');
         const custDropdown = document.getElementById('orderCustomerDropdown');
+        const productSelect = document.getElementById('orderProduct');
         const qtyInput = document.getElementById('orderQuantity');
         const unitSelect = document.getElementById('orderUnit');
         const priceInput = document.getElementById('orderPrice');
+        const delivInput = document.getElementById('orderDeliveryCharge');
         const paidInput = document.getElementById('orderAmountPaid');
         const form = document.getElementById('orderForm');
 
@@ -38,8 +42,13 @@ window.OrdersModule = {
             }
         });
 
-        // Auto-recalculate totals
-        [qtyInput, priceInput, unitSelect].forEach(el => {
+        // Product selection change
+        if (productSelect) {
+            productSelect.addEventListener('change', () => this.handleProductChange());
+        }
+
+        // Auto-recalculate totals & profit
+        [qtyInput, priceInput, unitSelect, delivInput].forEach(el => {
             if (el) el.addEventListener('input', () => this.recalculateTotals());
         });
 
@@ -50,6 +59,20 @@ window.OrdersModule = {
         if (form) {
             form.addEventListener('submit', (e) => this.handleSubmit(e));
         }
+
+        // Quick delivery buttons
+        document.querySelectorAll('.btn-quick-deliv').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const val = parseFloat(e.target.dataset.val) || 0;
+                const deliv = document.getElementById('orderDeliveryCharge');
+                if (deliv) {
+                    deliv.value = val > 0 ? val : '';
+                }
+                document.querySelectorAll('.btn-quick-deliv').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.recalculateTotals();
+            });
+        });
 
         // Quick payment buttons
         document.querySelectorAll('.btn-quick-pay').forEach(btn => {
@@ -63,11 +86,85 @@ window.OrdersModule = {
                 } else if (action === 'zero') {
                     paidInput.value = 0;
                 } else if (action === 'half') {
-                    paidInput.value = total > 0 ? (total / 2) : 0;
+                    paidInput.value = total > 0 ? Math.round(total / 2) : 0;
                 }
                 this.recalculateBalance();
             });
         });
+    },
+
+    handleProductChange() {
+        const productSelect = document.getElementById('orderProduct');
+        const unitSelect = document.getElementById('orderUnit');
+        const priceInput = document.getElementById('orderPrice');
+        const priceHint = document.getElementById('orderPriceHint');
+        const qtyInput = document.getElementById('orderQuantity');
+        if (!productSelect) return;
+
+        const prodId = productSelect.value;
+
+        if (prodId === 'ghee') {
+            if (unitSelect) {
+                unitSelect.innerHTML = `
+                    <option value="litre" selected>litre</option>
+                    <option value="kg">kg</option>
+                    <option value="gram">gram</option>
+                    <option value="ml">ml</option>
+                `;
+            }
+            if (priceInput) priceInput.value = 1200;
+            if (priceHint) priceHint.textContent = '(Cost: ₹750/L fixed | Selling: ₹1,200/L default)';
+            if (qtyInput && !qtyInput.value) qtyInput.value = 1;
+
+        } else if (prodId === 'milk_powder_500g') {
+            if (unitSelect) {
+                unitSelect.innerHTML = `
+                    <option value="pack (500g)" selected>pack (500g)</option>
+                    <option value="pack">pack</option>
+                `;
+            }
+            if (priceInput) priceInput.value = 300;
+            if (priceHint) priceHint.textContent = '(Cost: ₹170 | Selling: ₹300 | Profit: ₹130)';
+            if (qtyInput && !qtyInput.value) qtyInput.value = 1;
+
+        } else if (prodId === 'honey_250g') {
+            if (unitSelect) {
+                unitSelect.innerHTML = `
+                    <option value="jar (250g)" selected>jar (250g)</option>
+                    <option value="jar">jar</option>
+                `;
+            }
+            if (priceInput) priceInput.value = 200;
+            if (priceHint) priceHint.textContent = '(Cost: ₹70 | Selling: ₹200 | Profit: ₹130)';
+            if (qtyInput && !qtyInput.value) qtyInput.value = 1;
+
+        } else if (prodId === 'honey_500g') {
+            if (unitSelect) {
+                unitSelect.innerHTML = `
+                    <option value="jar (500g)" selected>jar (500g)</option>
+                    <option value="jar">jar</option>
+                `;
+            }
+            if (priceInput) priceInput.value = 300;
+            if (priceHint) priceHint.textContent = '(Cost: ₹130 | Selling: ₹300 | Profit: ₹170)';
+            if (qtyInput && !qtyInput.value) qtyInput.value = 1;
+
+        } else {
+            // custom / other
+            if (unitSelect) {
+                unitSelect.innerHTML = `
+                    <option value="unit" selected>unit</option>
+                    <option value="pack">pack</option>
+                    <option value="jar">jar</option>
+                    <option value="litre">litre</option>
+                    <option value="kg">kg</option>
+                `;
+            }
+            if (priceInput) priceInput.value = '';
+            if (priceHint) priceHint.textContent = '(Enter manual selling rate)';
+        }
+
+        this.recalculateTotals();
     },
 
     async loadCustomerOptions() {
@@ -113,7 +210,6 @@ window.OrdersModule = {
                 </div>
             `).join('');
 
-            // Also append quick add option at bottom
             html += `
                 <div class="dropdown-item add-new-item" onclick="OrdersModule.openQuickAddCustomer('${this.escapeHTML(query)}')">
                     <span>➕ Add New Customer</span>
@@ -172,35 +268,78 @@ window.OrdersModule = {
     },
 
     recalculateTotals() {
+        const productSelect = document.getElementById('orderProduct');
+        const prodId = productSelect ? productSelect.value : 'ghee';
         const qty = parseFloat(document.getElementById('orderQuantity').value) || 0;
         const price = parseFloat(document.getElementById('orderPrice').value) || 0;
-        const unit = document.getElementById('orderUnit').value;
+        const unit = document.getElementById('orderUnit') ? document.getElementById('orderUnit').value : 'litre';
+        const deliveryCharge = parseFloat(document.getElementById('orderDeliveryCharge').value) || 0;
 
-        let total = 0;
-        if (unit === 'gram') {
-            // Price entered can be either per kg or per jar. If user types 500g at ₹1200/kg -> ₹600.
-            // But per prompt: "5. Price, 6. Total amount (automatically calculated). Calculate the total automatically using quantity and entered price. Make the pricing unit clear, and ensure quantity and price units are consistent."
-            // So if unit is gram, Price is per gram unless specified. To keep it 100% simple for parents: Quantity * Price.
-            total = qty * price;
-        } else if (unit === 'ml') {
-            total = qty * price;
+        const subtotal = Math.round((qty * price) * 100) / 100;
+        const total = Math.round((subtotal + deliveryCharge) * 100) / 100;
+
+        // Calculate Cost Price:
+        // 1. Ghee: Fixed cost ₹750/L
+        // 2. Milk powder 500g: ₹170 cost
+        // 3. Honey 250g: ₹70 cost
+        // 4. Honey 500g: ₹130 cost
+        let cost = 0;
+        if (prodId === 'ghee') {
+            if (unit === 'ml' || unit === 'gram') {
+                cost = (qty / 1000) * 750;
+            } else {
+                cost = qty * 750;
+            }
+        } else if (prodId === 'milk_powder_500g') {
+            cost = qty * 170;
+        } else if (prodId === 'honey_250g') {
+            cost = qty * 70;
+        } else if (prodId === 'honey_500g') {
+            cost = qty * 130;
         } else {
-            // litre or kg
-            total = qty * price;
+            cost = 0;
         }
+        cost = Math.round(cost * 100) / 100;
 
-        // Round to 2 decimals
-        total = Math.round(total * 100) / 100;
+        // Profit = Total billed (subtotal + delivery) - Cost
+        const profit = Math.round((total - cost) * 100) / 100;
+        const margin = total > 0 ? Math.round((profit / total) * 100) : 0;
 
         const totalInput = document.getElementById('orderTotal');
         if (totalInput) {
             totalInput.value = total > 0 ? total : '';
         }
 
-        // If amount paid is empty, default to full paid
-        const paidInput = document.getElementById('orderAmountPaid');
-        if (paidInput && (!paidInput.value || parseFloat(paidInput.value) === 0)) {
-            // leave as is or update if full was clicked
+        // Live Profit & Breakdown Display
+        const profitDisplay = document.getElementById('orderProfitDisplay');
+        if (profitDisplay) {
+            if (total > 0 && cost > 0) {
+                profitDisplay.innerHTML = `
+                    <div class="order-profit-box">
+                        <div class="opb-header">
+                            <span>Order Total: <strong>₹${total.toLocaleString('en-IN')}</strong></span>
+                            <span class="opb-profit-badge">+₹${profit.toLocaleString('en-IN')} Profit (${margin}%)</span>
+                        </div>
+                        <div class="opb-breakdown">
+                            <span>Items: <strong>₹${subtotal.toLocaleString('en-IN')}</strong></span>
+                            ${deliveryCharge > 0 ? `<span>Delivery: <strong>+₹${deliveryCharge}</strong></span>` : '<span>Delivery: <strong>Free</strong></span>'}
+                            <span>Cost: <strong>₹${cost.toLocaleString('en-IN')}</strong></span>
+                            <span class="${profit >= 0 ? 'text-success' : 'text-danger'} font-weight-bold">Net Margin: ${margin}%</span>
+                        </div>
+                    </div>
+                `;
+            } else if (total > 0) {
+                profitDisplay.innerHTML = `
+                    <div class="order-profit-box">
+                        <div class="opb-header">
+                            <span>Order Total: <strong>₹${total.toLocaleString('en-IN')}</strong></span>
+                            <span class="opb-profit-badge">+₹${total.toLocaleString('en-IN')} Revenue</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                profitDisplay.innerHTML = '';
+            }
         }
 
         this.recalculateBalance();
@@ -237,11 +376,17 @@ window.OrdersModule = {
             dateInput.value = new Date().toISOString().split('T')[0];
         }
 
-        // Default unit to litre
-        const unitInput = document.getElementById('orderUnit');
-        if (unitInput) {
-            unitInput.value = 'litre';
+        // Default product to Ghee
+        const productSelect = document.getElementById('orderProduct');
+        if (productSelect) {
+            productSelect.value = 'ghee';
+            this.handleProductChange();
         }
+
+        // Default delivery charge to 0
+        const delivInput = document.getElementById('orderDeliveryCharge');
+        if (delivInput) delivInput.value = '';
+        document.querySelectorAll('.btn-quick-deliv').forEach(b => b.classList.remove('active'));
 
         // Default payment method to Cash
         const payMethodInput = document.getElementById('orderPaymentMethod');
@@ -251,6 +396,9 @@ window.OrdersModule = {
 
         const totalInput = document.getElementById('orderTotal');
         if (totalInput) totalInput.value = '';
+
+        const profitDisplay = document.getElementById('orderProfitDisplay');
+        if (profitDisplay) profitDisplay.innerHTML = '';
 
         this.recalculateBalance();
     },
@@ -267,20 +415,52 @@ window.OrdersModule = {
 
         const qty = parseFloat(document.getElementById('orderQuantity').value);
         if (!qty || qty <= 0) {
-            window.App.showToast('Please enter a valid ghee quantity.', 'error');
+            window.App.showToast('Please enter a valid quantity.', 'error');
             document.getElementById('orderQuantity').focus();
             return;
         }
 
         const price = parseFloat(document.getElementById('orderPrice').value);
         if (isNaN(price) || price < 0) {
-            window.App.showToast('Please enter the manual selling price.', 'error');
+            window.App.showToast('Please enter the selling price.', 'error');
             document.getElementById('orderPrice').focus();
             return;
         }
 
-        const total = parseFloat(document.getElementById('orderTotal').value) || (qty * price);
+        const productSelect = document.getElementById('orderProduct');
+        const prodId = productSelect ? productSelect.value : 'ghee';
+        const prodNameMap = {
+            'ghee': 'A2 Gir Cow Desi Ghee',
+            'milk_powder_500g': 'Milk Powder (500 gm)',
+            'honey_250g': 'Gir Forest Honey (250 gm)',
+            'honey_500g': 'Gir Forest Honey (500 gm)',
+            'custom': 'Custom Product'
+        };
+        const prodName = prodNameMap[prodId] || 'A2 Gir Cow Desi Ghee';
+        const unit = document.getElementById('orderUnit').value || 'litre';
+        const deliveryCharge = parseFloat(document.getElementById('orderDeliveryCharge').value) || 0;
+
+        const subtotal = Math.round((qty * price) * 100) / 100;
+        const total = parseFloat(document.getElementById('orderTotal').value) || (subtotal + deliveryCharge);
         const amountPaid = parseFloat(document.getElementById('orderAmountPaid').value) || 0;
+
+        // Calculate Cost Price:
+        let cost = 0;
+        if (prodId === 'ghee') {
+            if (unit === 'ml' || unit === 'gram') {
+                cost = (qty / 1000) * 750;
+            } else {
+                cost = qty * 750;
+            }
+        } else if (prodId === 'milk_powder_500g') {
+            cost = qty * 170;
+        } else if (prodId === 'honey_250g') {
+            cost = qty * 70;
+        } else if (prodId === 'honey_500g') {
+            cost = qty * 130;
+        }
+        cost = Math.round(cost * 100) / 100;
+        const profit = Math.round((total - cost) * 100) / 100;
 
         if (amountPaid < 0 || isNaN(amountPaid)) {
             window.App.showToast('Amount paid cannot be negative.', 'error');
@@ -305,9 +485,13 @@ window.OrdersModule = {
                 customer_id: this.selectedCustomer.id,
                 order_date: document.getElementById('orderDate').value || new Date().toISOString().split('T')[0],
                 quantity: qty,
-                unit: document.getElementById('orderUnit').value || 'litre',
+                unit: unit,
                 price: price,
+                delivery_charge: deliveryCharge,
                 total: total,
+                cost_price: cost,
+                profit: profit,
+                product_name: prodName,
                 amount_paid: amountPaid,
                 payment_method: document.getElementById('orderPaymentMethod').value || 'Cash',
                 notes: document.getElementById('orderNotes').value || ''
@@ -315,13 +499,14 @@ window.OrdersModule = {
 
             await window.DB.createOrder(orderPayload);
 
-            window.App.showToast(`Order for ${this.selectedCustomer.name} saved successfully! 🎉`, 'success');
+            window.App.showToast(`Order for ${this.selectedCustomer.name} saved! (+₹${profit} profit) 🎉`, 'success');
             this.resetForm();
 
-            // Refresh dashboard and reminders
+            // Refresh dashboard, customers, and reports
             if (window.DashboardModule) window.DashboardModule.loadStats();
             if (window.RemindersModule) window.RemindersModule.loadReminders();
             if (window.ReportsModule) window.ReportsModule.loadReports();
+            if (window.CustomersModule) window.CustomersModule.loadCustomers();
 
         } catch (err) {
             console.error('Failed to save order:', err);
@@ -348,9 +533,7 @@ window.OrdersModule = {
             document.getElementById('custPhone').value = initialName;
         }
 
-        // Set flag so upon customer creation, it auto-selects this customer in the order form!
         window.CustomersModule.autoSelectInOrderAfterSave = true;
-
         if (modal) modal.classList.add('active');
     },
 
@@ -361,4 +544,3 @@ window.OrdersModule = {
         );
     }
 };
-

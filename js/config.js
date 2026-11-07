@@ -75,6 +75,65 @@ const CONFIG = {
             `Namaste ${customerName} ji! 🙏\n\nHope you enjoyed Gir Naari's Pure A2 Gir Cow Desi Ghee.\n\nIt has been a while since your last purchase. Would you like to place another order?\n\nThank you for supporting Gir Naari! 🌿`
     },
 
+    // Products Catalog with Fixed Cost Prices and Selling Prices
+    products: [
+        {
+            id: 'ghee',
+            name: 'A2 Gir Cow Desi Ghee',
+            shortName: 'A2 Cow Ghee',
+            icon: '🌿',
+            defaultUnit: 'litre',
+            units: ['litre', 'kg', 'ml', 'gram'],
+            costPerLitre: 750, // Fixed cost: ₹750 per litre no matter the quantity
+            defaultSellingPrice: 1200,
+            hasFixedUnitCost: false
+        },
+        {
+            id: 'milk_powder_500g',
+            name: 'Milk Powder (500 gm)',
+            shortName: 'Milk Powder 500g',
+            icon: '🥛',
+            defaultUnit: 'pack (500g)',
+            units: ['pack (500g)', 'pack', 'gram'],
+            costPerUnit: 170, // Cost: ₹170
+            defaultSellingPrice: 300, // Sells at ₹300 (Profit: ₹130)
+            hasFixedUnitCost: true
+        },
+        {
+            id: 'honey_250g',
+            name: 'Gir Forest Honey (250 gm)',
+            shortName: 'Honey 250g',
+            icon: '🍯',
+            defaultUnit: 'jar (250g)',
+            units: ['jar (250g)', 'jar', 'gram'],
+            costPerUnit: 70, // Cost: ₹70
+            defaultSellingPrice: 200, // Sells at ₹200 (Profit: ₹130)
+            hasFixedUnitCost: true
+        },
+        {
+            id: 'honey_500g',
+            name: 'Gir Forest Honey (500 gm)',
+            shortName: 'Honey 500g',
+            icon: '🍯',
+            defaultUnit: 'jar (500g)',
+            units: ['jar (500g)', 'jar', 'gram'],
+            costPerUnit: 130, // Cost: ₹130
+            defaultSellingPrice: 300, // Sells at ₹300 (Profit: ₹170)
+            hasFixedUnitCost: true
+        },
+        {
+            id: 'custom',
+            name: 'Custom / Other Product',
+            shortName: 'Other Item',
+            icon: '📦',
+            defaultUnit: 'unit',
+            units: ['unit', 'pack', 'litre', 'kg', 'jar'],
+            costPerUnit: 0,
+            defaultSellingPrice: 0,
+            hasFixedUnitCost: true
+        }
+    ],
+
     // Common areas in Ahmedabad for quick auto-suggestions
     suggestedAreas: [
         'Gota',
