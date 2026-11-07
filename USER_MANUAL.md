@@ -1,4 +1,4 @@
-resume# 📖 Gir Naari – Family User Manual (વપરાશ માર્ગદર્શિકા)
+# 📖 Gir Naari – Family User Manual (વપરાશ માર્ગદર્શિકા)
 
 A simple, step-by-step guide for **Papa**, **Mummy**, and **Neev** on how to use the Gir Naari digital register on mobile phones.
 
@@ -93,8 +93,37 @@ Tap the **👥 Customers** tab at the bottom:
 - **Quick Action Buttons:**
   - 📞 **Call:** Dials their mobile directly.
   - 💬 **WhatsApp:** Opens WhatsApp chat with this customer.
+  - 💰 **Pay:** (Visible if they have an unpaid balance) Opens 1-tap settlement modal.
   - 📜 **History:** Shows their complete past orders, payment modes, and notes.
   - ➕ **Order:** Starts a new order for this customer immediately.
+
+---
+
+## 💰 Step 5B: What if a Customer Pays Later? (બાકી રકમ પછીથી ચૂકવે ત્યારે)
+
+If you marked an order **Unpaid (₹0)** or **Partial Paid**, and after a few days or weeks the customer pays you (via Cash, Google Pay, PhonePe, or Bank Transfer):
+
+### Method 1: From Customer History (📜 History)
+1. Go to **👥 Customers** tab.
+2. Find the customer and tap **📜 History**.
+3. You will see their past orders. Any unpaid order has a green button:  
+   👉 **`💰 Record Payment (₹... due)`**.
+4. Tap it:
+   - The app automatically fills the exact remaining balance!
+   - Select payment mode (**UPI**, **Cash**, or **Bank Transfer**).
+   - Tap **✓ Confirm & Save Payment**.
+5. Done! The order status instantly turns green (**Paid ✓**), and their balance becomes ₹0 across all phones.
+
+### Method 2: From Pending Register (📈 Reports)
+1. Go to **📈 Reports** tab.
+2. Scroll to **⚠️ Pending Payments Register**.
+3. You will see every customer who owes money.
+4. Tap **💰 Settle** next to their name.
+5. Confirm the amount and tap **✓ Confirm & Save Payment**.
+
+### Method 3: From Dashboard (📊 Dashboard)
+- Under **Recent Orders**, any order with a pending balance has a **`₹... due • 💰 Pay`** button.
+- Tap it to settle immediately!
 
 ---
 

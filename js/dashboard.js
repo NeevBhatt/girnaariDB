@@ -80,7 +80,7 @@ window.DashboardModule = {
                     <div class="dor-right">
                         <div class="dor-amount">₹${Number(order.total).toLocaleString('en-IN')}</div>
                         ${pending > 0 
-                            ? `<span class="badge-pending">₹${pending} due</span>` 
+                            ? `<button type="button" class="badge-pending-btn" onclick="PaymentsModule.openPaymentModal('${order.id}')" title="Record Payment">₹${pending} due &bull; 💰 Pay</button>` 
                             : `<span class="badge-paid">Paid ✓</span>`}
                     </div>
                 </div>

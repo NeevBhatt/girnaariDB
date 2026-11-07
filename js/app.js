@@ -26,6 +26,7 @@ window.App = {
         if (window.DashboardModule) await window.DashboardModule.init();
         if (window.OrdersModule) await window.OrdersModule.init();
         if (window.CustomersModule) await window.CustomersModule.init();
+        if (window.PaymentsModule) window.PaymentsModule.init();
         if (window.RemindersModule) await window.RemindersModule.init();
         if (window.ReportsModule) await window.ReportsModule.init();
         if (window.ImportModule) window.ImportModule.init();

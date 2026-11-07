@@ -192,6 +192,11 @@ window.CustomersModule = {
                                     💬 WhatsApp
                                 </a>
                             ` : ''}
+                            ${pending > 0 ? `
+                                <button type="button" class="btn btn-sm btn-warning" onclick="PaymentsModule.openSettleForCustomer('${c.id}')" title="Settle Pending Balance">
+                                    💰 Pay
+                                </button>
+                            ` : ''}
                             <button type="button" class="btn btn-sm btn-secondary" onclick="CustomersModule.viewCustomerHistory('${c.id}')">
                                 📜 History
                             </button>
@@ -424,6 +429,13 @@ window.CustomersModule = {
                                 <span>Paid: ₹${Number(o.amount_paid).toLocaleString('en-IN')} via ${o.payment_method}</span>
                                 ${o.notes ? `<div class="hoc-notes">📝 ${this.escapeHTML(o.notes)}</div>` : ''}
                             </div>
+                            ${balance > 0 ? `
+                                <div class="hoc-actions" style="margin-top: 8px;">
+                                    <button type="button" class="btn btn-sm btn-whatsapp btn-block" onclick="PaymentsModule.openPaymentModal('${o.id}')">
+                                        💰 Record Payment (₹${balance.toLocaleString('en-IN')} due)
+                                    </button>
+                                </div>
+                            ` : ''}
                         </div>
                     `;
                 });

@@ -8,7 +8,7 @@
     <title>Gir Naari - Customer & Order Register</title>
 
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="css/style.css?v=2.2.0">
+    <link rel="stylesheet" href="css/style.css?v=2.3.0">
 
     <!-- Supabase JS SDK (v2 via CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -589,6 +589,77 @@
         </div>
     </div>
 
+    <!-- 2B. Record Payment / Settle Balance Modal -->
+    <div id="paymentModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">💰 Record Customer Payment</h3>
+                <button type="button" class="modal-close" onclick="PaymentsModule.closeModal()">&times;</button>
+            </div>
+            <form id="paymentForm" autocomplete="off">
+                <input type="hidden" id="payOrderId">
+                <input type="hidden" id="payCustomerId">
+                <input type="hidden" id="payOrderTotal">
+                <input type="hidden" id="payCurrentPaid">
+                <input type="hidden" id="payOrderBalance">
+
+                <div class="modal-body">
+                    <!-- Order & Customer Summary Card -->
+                    <div id="paymentOrderSummary" class="order-summary-box mb-3">
+                        <!-- Populated dynamically: Customer Name, Date, Qty, Total, Already Paid, Outstanding -->
+                    </div>
+
+                    <!-- Payment Received Now -->
+                    <div class="form-group">
+                        <label class="form-label" for="payAmountReceived">
+                            Amount Received Now (₹) <span class="required">*</span>
+                            <span class="hint">(Defaults to full remaining balance)</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="payAmountReceived" 
+                            class="form-control" 
+                            placeholder="Amount received" 
+                            step="any" 
+                            min="1" 
+                            required 
+                            style="font-size: 18px; font-weight: 700; color: var(--primary-dark);"
+                        >
+                        <!-- Quick Tap Settlement Buttons -->
+                        <div class="quick-pay-row mt-2">
+                            <button type="button" class="btn-quick-pay" id="btnPayFullBalance">✓ Full Balance</button>
+                            <button type="button" class="btn-quick-pay" id="btnPayHalfBalance">½ Half</button>
+                        </div>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="form-group">
+                        <label class="form-label" for="payPaymentMethod">Payment Mode <span class="required">*</span></label>
+                        <select id="payPaymentMethod" class="form-select">
+                            <option value="Cash">Cash</option>
+                            <option value="UPI" selected>UPI (Google Pay / PhonePe / Paytm)</option>
+                            <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="form-group">
+                        <label class="form-label" for="payNotes">Payment Notes (Optional)</label>
+                        <input type="text" id="payNotes" class="form-control" placeholder="e.g. Paid to Papa via GPay">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-modal-cancel" onclick="PaymentsModule.closeModal()">Cancel</button>
+                    <button type="submit" id="btnSavePayment" class="btn btn-whatsapp" style="flex: 2;">
+                        <span>✓ Confirm & Save Payment</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- 3. Family Login & Profile Switcher Modal -->
     <div id="loginModal" class="modal-overlay">
         <div class="modal-content">
@@ -707,17 +778,18 @@
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- Application JavaScript Modules (with cache-buster) -->
-    <script src="js/config.js?v=2.2.0"></script>
-    <script src="js/supabaseClient.js?v=2.2.0"></script>
-    <script src="js/db.js?v=2.2.0"></script>
-    <script src="js/auth.js?v=2.2.0"></script>
-    <script src="js/dashboard.js?v=2.2.0"></script>
-    <script src="js/orders.js?v=2.2.0"></script>
-    <script src="js/customers.js?v=2.2.0"></script>
-    <script src="js/reminders.js?v=2.2.0"></script>
-    <script src="js/reports.js?v=2.2.0"></script>
-    <script src="js/import.js?v=2.2.0"></script>
-    <script src="js/app.js?v=2.2.0"></script>
+    <script src="js/config.js?v=2.3.0"></script>
+    <script src="js/supabaseClient.js?v=2.3.0"></script>
+    <script src="js/db.js?v=2.3.0"></script>
+    <script src="js/auth.js?v=2.3.0"></script>
+    <script src="js/dashboard.js?v=2.3.0"></script>
+    <script src="js/orders.js?v=2.3.0"></script>
+    <script src="js/customers.js?v=2.3.0"></script>
+    <script src="js/payments.js?v=2.3.0"></script>
+    <script src="js/reminders.js?v=2.3.0"></script>
+    <script src="js/reports.js?v=2.3.0"></script>
+    <script src="js/import.js?v=2.3.0"></script>
+    <script src="js/app.js?v=2.3.0"></script>
 </body>
 </html>
 

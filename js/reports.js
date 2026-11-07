@@ -239,6 +239,9 @@ window.ReportsModule = {
                         <div class="ppc-actions">
                             ${cleanPhone ? `<a href="tel:+91${cleanPhone}" class="btn btn-sm btn-outline">📞 Call</a>` : ''}
                             ${cleanPhone ? `<a href="https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Namaste ${c.name} ji! Reminder regarding pending ghee payment of ₹${item.totalPending}. Thank you, Gir Naari.`)}" target="_blank" class="btn btn-sm btn-whatsapp">💬 WhatsApp</a>` : ''}
+                            <button type="button" class="btn btn-sm btn-primary" onclick="PaymentsModule.openSettleForCustomer('${item.customer.id}')">
+                                💰 Settle
+                            </button>
                         </div>
                     </div>
                 </div>
