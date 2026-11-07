@@ -167,6 +167,20 @@ window.DB = {
         }
     },
 
+    async getOrderById(id) {
+        if (window.GirNaariDB.getClient() && !window.GirNaariDB.isMock()) {
+            return await this.exec(c => 
+                c.from('orders')
+                    .select('*, customers (id, name, phone, area)')
+                    .eq('id', id)
+                    .single()
+            );
+        } else {
+            const orders = await this.getOrders();
+            return orders.find(o => o.id === id) || null;
+        }
+    },
+
     async createOrder(order) {
         const quantity = parseFloat(order.quantity) || 0;
         const price = parseFloat(order.price) || 0;

@@ -33,8 +33,7 @@ window.PaymentsModule = {
     async openPaymentModal(orderId) {
         try {
             // Find the order
-            const orders = await window.DB.getOrders();
-            const order = orders.find(o => o.id === orderId);
+            const order = await window.DB.getOrderById(orderId);
             if (!order) {
                 window.App.showToast('Order not found.', 'error');
                 return;
@@ -231,3 +230,4 @@ window.PaymentsModule = {
             tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
     }
 };
+
